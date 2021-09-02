@@ -1,0 +1,22 @@
+{
+  "name": "deweb",
+  "version": "1.0.0",
+  "description": "A cli to deploy websites on top of archethic public blockchain by Uniris",
+  "bin": {
+    "deweb": "./yargs.js"
+  },
+  "keywords": [
+    "cli"
+  ],
+  "preferGlobal": true,
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "archethic": "^1.0.1",
+    "chalk": "^4.1.2",
+    "figlet": "^1.5.2",
+    "fs": "0.0.1-security",
+    "image-to-base64": "^2.2.0",
+    "yargs": "^17.1.0"
+  }
+}
