@@ -13,9 +13,9 @@ yargs.command({
 
     handler: function (argv)
     {   
-        console.log(chalk.green('\n','Hello and Welcome to DeWeb !','\n'))
-        console.log(chalk.blue(figlet.textSync('DeWeb',{font : "3d"})))
-        console.log(chalk.green('\n','Create your Website on top of Archethic Public Blockchain by Uniris'))
+        console.log(chalk.green('\n','Hello and Welcome to AeWeb !','\n'))
+        console.log(chalk.blue(figlet.textSync('AeWeb',{font : "3d"})))
+        console.log(chalk.green('\n','Create your Website on top of ArchEthic'))
         console.log(chalk.green('\n','Version - 1.0.0','\n'))
         
     }
@@ -37,7 +37,7 @@ yargs.command({
         
         const address = archethic.deriveAddress(argv.seed, 0)
         console.log(chalk.blue(address))
-        // Address: 004195d45987f33e5dcb71edfa63438d5e6add655b216acfdd31945d58210fe5d2
+        
         
     }
 })
@@ -93,7 +93,7 @@ yargs.command({
         
         
         
-        //content = "hello manuj"
+      
             transaction = null
             txBuilder = archethic.newTransactionBuilder("transfer")
                         .setContent(content)
@@ -107,7 +107,7 @@ yargs.command({
         console.log (chalk.green(toHex(transaction.address)))
         
 
-        //endpoint = "http://localhost:4000"
+       
         archethic.sendTransaction(transaction, argv.endpoint).then((data) => {
             if (data.errors) {
                 JSON.stringify(data.errors, undefined, 2)
@@ -115,7 +115,7 @@ yargs.command({
                 console.log(data.errors)
             }
             
-            //console.log(chalk.blue(figlet.textSync('DeWeb',{font : "3d"})))
+            
             console.log(chalk.blue("Transaction Sent Successfully !"))
             
         })
