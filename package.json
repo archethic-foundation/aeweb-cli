@@ -1,0 +1,33 @@
+{
+  "name": "aeweb",
+  "version": "1.0.0",
+  "description": "A cli to deploy websites on top of ArchEthic",
+  "bin": {
+    "aeweb": "aeweb.js"
+  },
+  "keywords": [
+    "cli"
+  ],
+  "main": "aeweb.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/archethic-foundation/aeweb-cli.git"
+  },
+  "author": "",
+  "license": "AGPL3",
+  "bugs": {
+    "url": "https://github.com/archethic-foundation/aeweb-cli/issues"
+  },
+  "homepage": "https://github.com/archethic-foundation/aeweb-cli#readme",
+  "dependencies": {
+    "archethic": "^1.3.1",
+    "chalk": "^4.1.2",
+    "figlet": "^1.5.2",
+    "fs": "^0.0.1-security",
+    "mime": "^3.0.0",
+    "yargs": "^17.3.0"
+  }
+}
