@@ -45,8 +45,8 @@ yargs.command({
     {   
         const address = archethic.deriveAddress(argv.seed, argv.index)
         console.log(chalk.blue(address))
-        console.log(chalk.green("Add some funds to the generated address !"))
-        console.log(chalk.blue("https://testnet.archethic.net/faucet"))
+        console.log(chalk.green("If you are using testnet go to https://testnet.archethic.net/faucet & add some funds to the generated address, otherwise transfer funds from your UCO wallet (in Mainnet)"))
+    
         
     }
 })
@@ -66,6 +66,12 @@ yargs.command({
             describe: 'Index',
             demandOption: true,  // Required
             type: 'number'     
+        },
+
+        endpoint: {
+            describe: 'Node Endpoint',
+            demandOption: true,  // Required
+            type: 'string'     
         },
 
         path: {
@@ -92,7 +98,7 @@ yargs.command({
         
       
             transaction = null
-            txBuilder = archethic.newTransactionBuilder("transfer")
+            txBuilder = archethic.newTransactionBuilder("hosting")
                         .setContent(content)
         
         
@@ -106,13 +112,13 @@ yargs.command({
        
         
        
-        archethic.sendTransaction(transaction, 'https://testnet.archethic.net').then(() => {
+        archethic.sendTransaction(transaction, argv.endpoint).then(() => {
             
             
             
             console.log(chalk.blue("Transaction Sent Successfully !"))
             
-            console.log(chalk.green("https://testnet.archethic.net"+"/api/last_transaction/"+(toHex(transaction.address))+"/content?mime=text/"+fileExtension(argv.path)))
+            console.log(chalk.green(argv.endpoint+"/api/last_transaction/"+(toHex(transaction.address))+"/content?mime=text/"+fileExtension(argv.path)))
             
         })
     }
