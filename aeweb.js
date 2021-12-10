@@ -4,7 +4,7 @@ const archethic = require('archethic')
 const fs = require('fs')
 const chalk = require('chalk')
 const figlet = require('figlet')
-const fileExtension = require('file-extension')
+const mime = require('mime')
 
 
 
@@ -26,7 +26,7 @@ yargs.command({
 yargs.command({
     
     command: 'generate-address',
-    describe: 'Generate',
+    describe: 'Generate Address',
     builder: {
         seed: {
             describe: 'Seed',
@@ -53,8 +53,8 @@ yargs.command({
 
 
 yargs.command({
-    command: 'generate-transaction',
-    describe: 'Generate',
+    command: 'deploy-file',
+    describe: 'Generate transaction on-chain',
     builder: {
         seed: {
             describe: 'Seed',
@@ -118,7 +118,7 @@ yargs.command({
             
             console.log(chalk.blue("Transaction Sent Successfully !"))
             
-            console.log(chalk.green(argv.endpoint+"/api/last_transaction/"+(toHex(transaction.address))+"/content?mime=text/"+fileExtension(argv.path)))
+            console.log(chalk.green(argv.endpoint+"/api/last_transaction/"+(toHex(transaction.address))+"/content?mime="+mime.getType(argv.path)))
             
         })
     }
