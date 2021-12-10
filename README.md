@@ -4,12 +4,6 @@ Welcome to the ÆWeb Cli repository ! This command line interface enables you to
 
 Using this cli you can deploy a single page website
 
-
-## Version
-
-1.0.0
-
-
 ## Instructions
 
 To get the ÆWeb CLI, you need NodeJS installed. Then you need to install the CLI, using:
