@@ -21,7 +21,7 @@ aeweb generate-address --seed=myseedphrase --index=0
 
 To deploy files you need -
 - `seed` is hexadecimal encoding or Uint8Array representing the transaction chain seed to be able to derive and generate the keys
-- `index` is the number of transactions in the chain, to generate the actual and the next public key (see below the cryptography section)
+- `index` is the number of transactions in the chain, to generate the actual and the next public key 
 - `endpoint` is the HTTP URL to node
 - `path` is the file path
 ```bash
