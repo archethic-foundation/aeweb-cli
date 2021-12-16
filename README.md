@@ -11,6 +11,11 @@ To get the ÆWeb CLI, you need NodeJS installed. Then you need to install the CL
 npm install aeweb -g
 ```
 
+To check if ÆWeb CLI is installed successfully, try :
+```bash
+aeweb about
+```
+
 To generate address you need -
 - `seed` is a string representing the transaction chain entropy to be able to derive and generate the keys for the transactions
 - `index` is the number of transactions in the chain, to generate the current and the next public key 
