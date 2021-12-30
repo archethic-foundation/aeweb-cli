@@ -6,7 +6,7 @@ Using this cli you can deploy a single page website
 
 ## Instructions
 
-To get the ÆWeb CLI, you need NodeJS installed. Then you need to install the CLI, using:
+To get the ÆWeb CLI, you need NodeJS (latest version) installed. Then you need to install the CLI, using:
 ```bash
 npm install aeweb -g
 ```
