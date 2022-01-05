@@ -19,8 +19,9 @@ aeweb about
 To generate address you need -
 - `seed` is a string representing the transaction chain entropy to be able to derive and generate the keys for the transactions
 - `index` is the number of transactions in the chain, to generate the current and the next public key 
+- `log` enables transaction logging (not required)
 ```bash
-aeweb generate-address --seed=myseedphrase --index=0
+aeweb generate-address --seed=myseedphrase --index=0 --log
 ```
 
 To deploy files you need -
@@ -28,8 +29,9 @@ To deploy files you need -
 - `index` is the number of transactions in the chain, to generate the current and the next public key 
 - `endpoint` is the URL of a welcome node to receive the transaction
 - `path` is the file path
+- `log` enables transaction logging (not required)
 ```bash
-aeweb deploy-file --seed=myseedphrase --index=0 --endpoint=https://testnet.archethic.net --path=./index.html
+aeweb deploy-file --seed=myseedphrase --index=0 --endpoint=https://testnet.archethic.net --path=./index.html --log
 ```
 
 ## Contribution

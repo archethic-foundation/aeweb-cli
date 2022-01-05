@@ -78,6 +78,12 @@ yargs.command({
             describe: 'Path',
             demandOption: true,  // Required
             type: 'string'     
+        },
+
+        log: {
+            describe: 'Logging',
+            demandOption: false,  // Required
+            type: 'boolean'     
         }
 
 
@@ -118,7 +124,10 @@ yargs.command({
             
             console.log(chalk.green(argv.endpoint+"/api/last_transaction/"+(toHex(transaction.address))+"/content?mime="+mime.getType(argv.path)))
             
-            console.log(chalk.blue("Transaction status: " + response.status))
+            if (argv.log) {
+                console.log(chalk.blue("status : " + response.status))
+            }
+            
         })
     }
     })
