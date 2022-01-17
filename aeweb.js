@@ -62,12 +62,6 @@ yargs.command({
             type: 'string'     
         },
 
-        index: {
-            describe: 'Index',
-            demandOption: true,  // Required
-            type: 'number'     
-        },
-
         endpoint: {
             describe: 'Node Endpoint',
             demandOption: true,  // Required
@@ -101,10 +95,13 @@ yargs.command({
             txBuilder = archethic.newTransactionBuilder("hosting")
                         .setContent(content)
         
+        const address = archethic.deriveAddress(argv.seed, 0)
         
+        archethic.getTransactionIndex(address, argv.endpoint).then((index) => {
+                                            
             
         transaction = txBuilder
-                        .build(argv.seed, argv.index, argv.curve)
+                        .build(argv.seed, index)
                         .originSign(originPrivateKey)
             
         console.log (chalk.green(toHex(transaction.address)))
@@ -121,6 +118,7 @@ yargs.command({
             console.log(chalk.green(argv.endpoint+"/api/last_transaction/"+(toHex(transaction.address))+"/content?mime="+mime.getType(argv.path)))
             
         })
+    })
     }
     })
    
