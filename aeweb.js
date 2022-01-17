@@ -111,8 +111,6 @@ yargs.command({
             
             
             
-            //console.log(chalk.blue("Transaction Sent Successfully !"))
-            
             console.log(chalk.green(argv.endpoint+"/api/last_transaction/"+(toHex(transaction.address))+"/content?mime="+mime.getType(argv.path)))
 
             if(response.status == 'ok')
