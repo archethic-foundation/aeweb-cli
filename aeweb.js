@@ -15,6 +15,8 @@ let Files = []
 let Seed = []
 let Address = []
 let tx
+let send_file
+let send_folder
 
 
 function toHex(bytes) {
@@ -101,16 +103,18 @@ yargs.command({
             .build(argv.seed, index, argv.curve)
             .originSign(originPrivateKey)
 
-        console.log(chalk.green(toHex(transaction.address)))
-
-        const response = await archethic.sendTransaction(transaction, argv.endpoint)
-        if (response.status == 'ok') {
-            console.log(chalk.blue("Transaction Sent Successfully !"))
-            console.log(chalk.green(argv.endpoint + "/api/last_transaction/" + (toHex(transaction.address)) + "/content?mime=" + mime.getType(argv.file)))
-        } else {
-            console.log(chalk.red("Transaction not deployed ! Please check if funds are transferred successfully to the generated address"))
+      
+        try {
+            send_file = await archethic.sendTransaction(transaction, argv.endpoint)
+            if (send_file.status == 'ok') {
+                console.log(chalk.blue("Transaction Sent Successfully !"))
+                console.log(chalk.green(argv.endpoint + "/api/last_transaction/" + (toHex(transaction.address)) + "/content?mime=" + mime.getType(argv.file)))
+            } else {
+                throw new Error("Transaction not deployed ! Please check if funds are transferred successfully to the generated address")
+            }
+        } catch (e) {
+            console.error(chalk.red(e.message))
         }
-
     }
 })
 
@@ -161,11 +165,11 @@ yargs.command({
             const address = archethic.deriveAddress(seed, 0)
             Address.push(address)
         }
-
+        
         tx = archethic.newTransactionBuilder("transfer")
 
         for (let i = 0; i < Address.length; i++) {
-            tx.addUCOTransfer(Address[i], 1.0)
+            tx.addUCOTransfer(Address[i], 10.0)
         }
 
         txn = tx
@@ -191,12 +195,16 @@ yargs.command({
                 .build(seed, index)
                 .originSign(originPrivateKey)
 
-            const response = await archethic.sendTransaction(transaction, argv.endpoint)
-            if (response.status == 'ok') {
-                console.log(chalk.yellow(Files[i]))
-                console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
-            } else {
-                console.log(chalk.red(response.status))
+            try {
+                send_folder = await archethic.sendTransaction(transaction, argv.endpoint)
+                if (send_folder.status == 'ok') {
+                    console.log(chalk.yellow(Files[i]))
+                    console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
+                } else {
+                    throw new Error(('Transaction not deployed ! Please check if funds are transferred successfully to the generated address'))
+                }
+            } catch (e) {
+                console.error(chalk.red(e.message))
             }
 
         }
