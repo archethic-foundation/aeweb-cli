@@ -90,28 +90,27 @@ yargs.command({
 
     },
 
-    handler: function (argv) {
+    handler: async function (argv) {
         const content = fs.readFileSync(argv.file)
         transaction = null
         txBuilder = archethic.newTransactionBuilder("hosting")
             .setContent(content)
         const address = archethic.deriveAddress(argv.seed, 0)
-        archethic.getTransactionIndex(address, argv.endpoint).then((index) => {
-            transaction = txBuilder
-                .build(argv.seed, index, argv.curve)
-                .originSign(originPrivateKey)
+        const index = await archethic.getTransactionIndex(address, argv.endpoint)
+        transaction = txBuilder
+            .build(argv.seed, index, argv.curve)
+            .originSign(originPrivateKey)
 
-            console.log(chalk.green(toHex(transaction.address)))
+        console.log(chalk.green(toHex(transaction.address)))
 
-            archethic.sendTransaction(transaction, argv.endpoint).then((response) => {
-                if (response.status == 'ok') {
-                    console.log(chalk.blue("Transaction Sent Successfully !"))
-                    console.log(chalk.green(argv.endpoint + "/api/last_transaction/" + (toHex(transaction.address)) + "/content?mime=" + mime.getType(argv.file)))
-                } else {
-                    console.log(chalk.red("Transaction not deployed ! Please check if funds are transferred successfully to the generated address"))
-                }
-            })
-        })
+        const response = await archethic.sendTransaction(transaction, argv.endpoint)
+        if (response.status == 'ok') {
+            console.log(chalk.blue("Transaction Sent Successfully !"))
+            console.log(chalk.green(argv.endpoint + "/api/last_transaction/" + (toHex(transaction.address)) + "/content?mime=" + mime.getType(argv.file)))
+        } else {
+            console.log(chalk.red("Transaction not deployed ! Please check if funds are transferred successfully to the generated address"))
+        }
+
     }
 })
 
@@ -138,7 +137,7 @@ yargs.command({
         }
     },
 
-    handler: function (argv) {
+    handler: async function (argv) {
 
         function ReadDirectory(Directory) {
             try {
@@ -173,7 +172,7 @@ yargs.command({
             .build(argv.seed, 0)
             .originSign(originPrivateKey)
 
-        archethic.sendTransaction(txn, argv.endpoint)
+        await archethic.sendTransaction(txn, argv.endpoint)
 
         for (let i = 0; i < Files.length; i++) {
             const hmac = crypto.createHmac(algo, argv.seed);
@@ -187,22 +186,19 @@ yargs.command({
             const txBuilder = archethic.newTransactionBuilder("hosting")
             txBuilder.setContent(content)
 
-            archethic.getTransactionIndex(address, argv.endpoint).then((index) => {
-                transaction = txBuilder
-                    .build(seed, index)
-                    .originSign(originPrivateKey)
+            const index = await archethic.getTransactionIndex(address, argv.endpoint)
+            transaction = txBuilder
+                .build(seed, index)
+                .originSign(originPrivateKey)
 
-                archethic.sendTransaction(transaction, argv.endpoint).then((response) => {
-                    if (response.status == 'ok') {
-                        console.log(chalk.yellow(Files[i]))
-                        console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
-                    }
-                    else {
-                        console.log(chalk.red(response.status))
-                    }
-                })
-                
-            })
+            const response = await archethic.sendTransaction(transaction, argv.endpoint)
+            if (response.status == 'ok') {
+                console.log(chalk.yellow(Files[i]))
+                console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
+            } else {
+                console.log(chalk.red(response.status))
+            }
+
         }
     }
 })
