@@ -25,11 +25,10 @@ aeweb generate-address --seed=myseedphrase --index=0
 
 To deploy files you need -
 - `seed` is a string representing the transaction chain entropy to be able to derive and generate the keys
-- `index` is the number of transactions in the chain, to generate the current and the next public key 
 - `endpoint` is the URL of a welcome node to receive the transaction
 - `path` is the file path
 ```bash
-aeweb deploy-file --seed=myseedphrase --index=0 --endpoint=https://testnet.archethic.net --path=./index.html
+aeweb deploy-file --seed=myseedphrase --endpoint=https://testnet.archethic.net --path=./index.html
 ```
 
 ## Contribution

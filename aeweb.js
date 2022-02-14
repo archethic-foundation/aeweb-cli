@@ -62,12 +62,6 @@ yargs.command({
             type: 'string'     
         },
 
-        index: {
-            describe: 'Index',
-            demandOption: true,  // Required
-            type: 'number'     
-        },
-
         endpoint: {
             describe: 'Node Endpoint',
             demandOption: true,  // Required
@@ -101,26 +95,38 @@ yargs.command({
             txBuilder = archethic.newTransactionBuilder("hosting")
                         .setContent(content)
         
+        const address = archethic.deriveAddress(argv.seed, 0)
         
+        archethic.getTransactionIndex(address, argv.endpoint).then((index) => {
+                                            
             
         transaction = txBuilder
-                        .build(argv.seed, argv.index, argv.curve)
+                        .build(argv.seed, index)
                         .originSign(originPrivateKey)
             
         console.log (chalk.green(toHex(transaction.address)))
-        
+               
        
-        
-       
-        archethic.sendTransaction(transaction, argv.endpoint).then(() => {
+        archethic.sendTransaction(transaction, argv.endpoint).then((response) => {
             
             
-            
-            console.log(chalk.blue("Transaction Sent Successfully !"))
             
             console.log(chalk.green(argv.endpoint+"/api/last_transaction/"+(toHex(transaction.address))+"/content?mime="+mime.getType(argv.path)))
+
+            if(response.status == 'ok')
+            {
+                console.log(chalk.blue("Transaction Sent Successfully !"))
+            }
+            else
+            {
+                console.log(chalk.red("Transaction not deployed ! Please check if funds are transferred successfully to the generated address"))
+            }
+
             
         })
+
+    
+    })
     }
     })
    
