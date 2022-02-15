@@ -36,6 +36,7 @@ To deploy folder you need -
 - `folder` is the folder name
 ```bash
 aeweb deploy-folder --seed=myseedphrase --endpoint=https://testnet.archethic.net --folder=Aeweb
+aeweb deploy-file --seed=myseedphrase --endpoint=https://testnet.archethic.net --path=./index.html
 ```
 
 ## Contribution
