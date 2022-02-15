@@ -105,6 +105,7 @@ yargs.command({
         catch(e)
         {
             console.error(chalk.red(e.message))
+            return
         }
         transaction = txBuilder
             .build(argv.seed, index, argv.curve)
@@ -121,6 +122,7 @@ yargs.command({
             }
         } catch (e) {
             console.error(chalk.red(e.message))
+            return
         }
     }
 })
@@ -159,6 +161,7 @@ yargs.command({
                 });
             } catch (e) {
                 console.error(chalk.red(e.message))
+                return
             }
         }
 
@@ -203,6 +206,7 @@ yargs.command({
             catch(e)
             {
                 console.error(chalk.red(e.message))
+                return
             }
             transaction = txBuilder
                 .build(seed, index)
@@ -218,6 +222,7 @@ yargs.command({
                 }
             } catch (e) {
                 console.error(chalk.red(e.message))
+                return
             }
 
         }
