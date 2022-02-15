@@ -186,8 +186,13 @@ yargs.command({
             .build(argv.seed, 0)
             .originSign(originPrivateKey)
 
-        await archethic.sendTransaction(txn, argv.endpoint)
-
+        try {
+            await archethic.sendTransaction(txn, argv.endpoint)
+        }
+        catch(e){
+            console.error(chalk.red(e.message))
+            return
+        }
         for (let i = 0; i < Files.length; i++) {
             const hmac = crypto.createHmac(algo, argv.seed);
             hmac.update(Files[i])
