@@ -17,6 +17,7 @@ let Address = []
 let tx
 let send_file
 let send_folder
+let index
 
 
 function toHex(bytes) {
@@ -98,7 +99,13 @@ yargs.command({
         txBuilder = archethic.newTransactionBuilder("hosting")
             .setContent(content)
         const address = archethic.deriveAddress(argv.seed, 0)
-        const index = await archethic.getTransactionIndex(address, argv.endpoint)
+        try {
+         index = await archethic.getTransactionIndex(address, argv.endpoint)
+        }
+        catch(e)
+        {
+            console.error(chalk.red(e.message))
+        }
         transaction = txBuilder
             .build(argv.seed, index, argv.curve)
             .originSign(originPrivateKey)
@@ -107,8 +114,8 @@ yargs.command({
         try {
             send_file = await archethic.sendTransaction(transaction, argv.endpoint)
             if (send_file.status == 'ok') {
-                console.log(chalk.blue("Transaction Sent Successfully !"))
-                console.log(chalk.green(argv.endpoint + "/api/last_transaction/" + (toHex(transaction.address)) + "/content?mime=" + mime.getType(argv.file)))
+                console.log(chalk.green("Transaction Sent Successfully !"))
+                console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + (toHex(transaction.address)) + "/content?mime=" + mime.getType(argv.file)))
             } else {
                 throw new Error("Transaction not deployed ! Please check if funds are transferred successfully to the generated address")
             }
@@ -151,7 +158,7 @@ yargs.command({
                     else return Files.push(abs);
                 });
             } catch (e) {
-                console.error(e.message)
+                console.error(chalk.red(e.message))
             }
         }
 
@@ -190,7 +197,13 @@ yargs.command({
             const txBuilder = archethic.newTransactionBuilder("hosting")
             txBuilder.setContent(content)
 
-            const index = await archethic.getTransactionIndex(address, argv.endpoint)
+            try {
+                index = await archethic.getTransactionIndex(address, argv.endpoint)
+            }
+            catch(e)
+            {
+                console.error(chalk.red(e.message))
+            }
             transaction = txBuilder
                 .build(seed, index)
                 .originSign(originPrivateKey)
