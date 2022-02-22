@@ -37,6 +37,13 @@ To deploy folder you need -
 ```bash
 aeweb deploy-folder --seed=myseedphrase --endpoint=https://testnet.archethic.net --folder=Aeweb
 ```
+To deploy website you need -
+- `seed` is a string representing the transaction chain entropy to be able to derive and generate the keys
+- `endpoint` is the URL of a welcome node to receive the transaction
+- `folder` is the folder name
+```bash
+aeweb deploy-website --seed=myseedphrase --endpoint=https://testnet.archethic.net --folder=Aeweb
+```
 
 ## Contribution
 
