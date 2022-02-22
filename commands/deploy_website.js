@@ -6,16 +6,20 @@ const mime = require('mime')
 const path = require('path')
 const crypto = require('crypto')
 const algo = 'sha256'
+const jsdom = require("jsdom")
+const { JSDOM } = jsdom
 let Files = []
 let Seed = []
 let Address = []
+let array_files = []
+let array_address = []
 let tx
 let send_folder
 let index
 
-exports.command = 'deploy-folder'
+exports.command = 'deploy-website'
 
-exports.describe = 'Deploy all files inside folder on Archethic Public Blockchain'
+exports.describe = 'Deploy all files inside folder and target index.html file to automatically convert filepaths to transactions'
 
 exports.builder = {
     seed: {
@@ -106,6 +110,8 @@ exports.handler = async function (argv) {
             if (send_folder.status == 'ok') {
                 console.log(chalk.yellow(Files[i]))
                 console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
+                array_files.push((Files[i].substring(Files[i].indexOf('/') + 1)))
+                array_address.push(address)
             } else {
                 throw new Error(('Transaction not deployed ! Please check if funds are transferred successfully to the generated address'))
             }
@@ -114,5 +120,43 @@ exports.handler = async function (argv) {
             return
         }
 
+    }
+
+    for (let i = 0; i < array_files.length; i++) {
+        if ((array_files[i] == 'index.html')) {
+
+            JSDOM.fromFile(argv.folder + "/index.html").then(dom => {
+
+                var nodelist = dom.window.document.querySelectorAll('[src],[href]');
+
+                for (let i = 0; i < nodelist.length; ++i) {
+                    var item = nodelist[i];
+
+
+                    for (let i = 0; i < array_files.length; i++) {
+
+                        if (String(item.getAttribute('src')).substring(String(item.getAttribute('src')).lastIndexOf('/') + 1) == (array_files[i].substring(array_files[i].lastIndexOf('/') + 1))) {
+                            item.setAttribute('src', argv.endpoint + "/api/last_transaction/" + array_address[i] + "/content?mime=" + mime.getType(array_files[i]))
+                        }
+
+                        if (String(item.getAttribute('href')).substring(String(item.getAttribute('href')).lastIndexOf('/') + 1) == (array_files[i].substring(array_files[i].lastIndexOf('/') + 1))) {
+                            item.setAttribute('href', argv.endpoint + "/api/last_transaction/" + array_address[i] + "/content?mime=" + mime.getType(array_files[i]))
+                        }
+                    }
+
+
+                }
+
+
+                data = dom.serialize()
+                fs.writeFile(argv.folder + "/index.html", data, (err) => {
+                    if (err)
+                        console.log(err);
+                    else {
+                        fs.readFileSync(argv.folder + "/index.html", "utf8");
+                    }
+                });
+            });
+        }
     }
 }

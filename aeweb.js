@@ -14,5 +14,8 @@ yargs.command((require('./commands/deploy_file')))
 yargs.command((require('./commands/deploy_folder')))
     .help()
 
+yargs.command((require('./commands/deploy_website')))
+    .help()
+
 
 yargs.parse()
