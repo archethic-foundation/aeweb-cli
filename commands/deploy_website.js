@@ -84,6 +84,7 @@ exports.handler = async function (argv) {
     }
 
     for (let i = 0; i < Files.length; i++) {
+
         const hmac = crypto.createHmac(algo, argv.seed);
         hmac.update(Files[i])
         const seed = hmac.digest('hex')
@@ -112,6 +113,7 @@ exports.handler = async function (argv) {
                 console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
                 array_files.push((Files[i].substring(Files[i].indexOf('/') + 1)))
                 array_address.push(address)
+
             } else {
                 throw new Error(('Transaction not deployed ! Please check if funds are transferred successfully to the generated address'))
             }
@@ -125,38 +127,71 @@ exports.handler = async function (argv) {
     for (let i = 0; i < array_files.length; i++) {
         if ((array_files[i] == 'index.html')) {
 
-            JSDOM.fromFile(argv.folder + "/index.html").then(dom => {
+            const dom = await JSDOM.fromFile(argv.folder + "/index.html")
 
-                var nodelist = dom.window.document.querySelectorAll('[src],[href]');
+            var nodelist = dom.window.document.querySelectorAll('[src],[href]');
 
-                for (let i = 0; i < nodelist.length; ++i) {
-                    var item = nodelist[i];
+            for (let i = 0; i < nodelist.length; ++i) {
+                var item = nodelist[i];
 
 
-                    for (let i = 0; i < array_files.length; i++) {
+                for (let i = 0; i < array_files.length; i++) {
 
-                        if (String(item.getAttribute('src')).substring(String(item.getAttribute('src')).lastIndexOf('/') + 1) == (array_files[i].substring(array_files[i].lastIndexOf('/') + 1))) {
-                            item.setAttribute('src', argv.endpoint + "/api/last_transaction/" + array_address[i] + "/content?mime=" + mime.getType(array_files[i]))
-                        }
-
-                        if (String(item.getAttribute('href')).substring(String(item.getAttribute('href')).lastIndexOf('/') + 1) == (array_files[i].substring(array_files[i].lastIndexOf('/') + 1))) {
-                            item.setAttribute('href', argv.endpoint + "/api/last_transaction/" + array_address[i] + "/content?mime=" + mime.getType(array_files[i]))
-                        }
+                    if (String(item.getAttribute('src')).substring(String(item.getAttribute('src')).lastIndexOf('/') + 1) == (array_files[i].substring(array_files[i].lastIndexOf('/') + 1))) {
+                        item.setAttribute('src', argv.endpoint + "/api/last_transaction/" + array_address[i] + "/content?mime=" + mime.getType(array_files[i]))
                     }
 
-
+                    if (String(item.getAttribute('href')).substring(String(item.getAttribute('href')).lastIndexOf('/') + 1) == (array_files[i].substring(array_files[i].lastIndexOf('/') + 1))) {
+                        item.setAttribute('href', argv.endpoint + "/api/last_transaction/" + array_address[i] + "/content?mime=" + mime.getType(array_files[i]))
+                    }
                 }
 
 
-                data = dom.serialize()
-                fs.writeFile(argv.folder + "/index.html", data, (err) => {
-                    if (err)
-                        console.log(err);
-                    else {
-                        fs.readFileSync(argv.folder + "/index.html", "utf8");
-                    }
-                });
-            });
+            }
+
+            data = dom.serialize()
+            try {
+                fs.writeFileSync(argv.folder + "/index.html", data)
+
+            } catch (err) {
+                console.error(err)
+            }
+
+
+            const hmac = crypto.createHmac(algo, argv.seed);
+            hmac.update(argv.folder + "/index.html")
+            const seed = hmac.digest('hex')
+            const address = archethic.deriveAddress(seed, 0)
+
+            const content = fs.readFileSync(argv.folder + "/index.html")
+
+            transaction = null
+            const txBuilder = archethic.newTransactionBuilder("hosting")
+            txBuilder.setContent(content)
+
+            try {
+                index = await archethic.getTransactionIndex(address, argv.endpoint)
+            } catch (e) {
+                console.error(chalk.red(e.message))
+                return
+            }
+            transaction = txBuilder
+                .build(seed, index)
+                .originSign(originPrivateKey)
+
+            try {
+                send_folder = await archethic.sendTransaction(transaction, argv.endpoint)
+                if (send_folder.status == 'ok') {
+                    console.log(chalk.green('Check your website at-'))
+                    console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
+
+                } else {
+                    throw new Error(('Transaction not deployed ! Please check if funds are transferred successfully to the generated address'))
+                }
+            } catch (e) {
+                console.error(chalk.red(e.message))
+                return
+            }
         }
     }
 }
