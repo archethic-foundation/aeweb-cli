@@ -108,6 +108,9 @@ exports.handler = async function (argv) {
 
         try {
             send_folder = await archethic.sendTransaction(transaction, argv.endpoint)
+            archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
+                console.log(nbConfirmations)
+            })
             if (send_folder.status == 'ok') {
                 console.log(chalk.yellow(Files[i]))
                 console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
@@ -181,6 +184,9 @@ exports.handler = async function (argv) {
 
             try {
                 send_folder = await archethic.sendTransaction(transaction, argv.endpoint)
+                archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
+                    console.log(nbConfirmations)
+                })
                 if (send_folder.status == 'ok') {
                     console.log(chalk.green('Check your website at-'))
                     console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))

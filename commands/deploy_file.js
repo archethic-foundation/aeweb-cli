@@ -58,6 +58,9 @@ exports.handler = async function (argv) {
 
     try {
         send_file = await archethic.sendTransaction(transaction, argv.endpoint)
+        archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
+            console.log(nbConfirmations)
+        })
         if (send_file.status == 'ok') {
             console.log(chalk.green("Transaction Sent Successfully !"))
             console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + (toHex(transaction.address)) + "/content?mime=" + mime.getType(argv.file)))
