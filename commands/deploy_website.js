@@ -109,6 +109,8 @@ exports.handler = async function (argv) {
         try {
             send_folder = await archethic.sendTransaction(transaction, argv.endpoint)
             if (send_folder.status == 'ok') {
+                const { fee: fee } = await archethic.getTransactionFee(transaction, argv.endpoint)
+                console.log(chalk.yellow("Transaction fee : " +fee))
                 console.log(chalk.yellow(Files[i]))
                 console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
                 array_files.push((Files[i].substring(Files[i].indexOf('/') + 1)))
@@ -182,6 +184,8 @@ exports.handler = async function (argv) {
             try {
                 send_folder = await archethic.sendTransaction(transaction, argv.endpoint)
                 if (send_folder.status == 'ok') {
+                    const { fee: fee } = await archethic.getTransactionFee(transaction, argv.endpoint)
+                    console.log(chalk.yellow("Transaction fee : " +fee))
                     console.log(chalk.green('Check your website at-'))
                     console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
 

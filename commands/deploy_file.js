@@ -59,6 +59,8 @@ exports.handler = async function (argv) {
     try {
         send_file = await archethic.sendTransaction(transaction, argv.endpoint)
         if (send_file.status == 'ok') {
+            const { fee: fee } = await archethic.getTransactionFee(transaction, argv.endpoint)
+            console.log(chalk.yellow("Transaction fee : " +fee))
             console.log(chalk.green("Transaction Sent Successfully !"))
             console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + (toHex(transaction.address)) + "/content?mime=" + mime.getType(argv.file)))
         } else {
