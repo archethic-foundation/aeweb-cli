@@ -102,16 +102,18 @@ exports.handler = async function (argv) {
             .originSign(originPrivateKey)
 
         try {
-            send_folder = await archethic.sendTransaction(transaction, argv.endpoint)
+            const { fee: fee } = await archethic.getTransactionFee(transaction, argv.endpoint)
+            console.log(chalk.yellow("Transaction fee : " +fee))
+
             archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
-                console.log(nbConfirmations)
+                console.log(chalk.magenta("Transaction confirmed with " + nbConfirmations + " replications"))
             })
-            if (send_folder.status == 'ok') {
-                console.log(chalk.yellow(Files[i]))
-                console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
-            } else {
-                throw new Error(('Transaction not deployed ! Please check if funds are transferred successfully to the generated address'))
-            }
+
+            send_folder = await archethic.sendTransaction(transaction, argv.endpoint)
+            
+            console.log(chalk.cyan(Files[i]))
+            console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
+            
         } catch (e) {
             console.error(chalk.red(e.message))
             return

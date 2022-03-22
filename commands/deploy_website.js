@@ -107,19 +107,21 @@ exports.handler = async function (argv) {
             .originSign(originPrivateKey)
 
         try {
-            send_folder = await archethic.sendTransaction(transaction, argv.endpoint)
-            archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
-                console.log(nbConfirmations)
-            })
-            if (send_folder.status == 'ok') {
-                console.log(chalk.yellow(Files[i]))
-                console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
-                array_files.push((Files[i].substring(Files[i].indexOf('/') + 1)))
-                array_address.push(address)
+            const { fee: fee } = await archethic.getTransactionFee(transaction, argv.endpoint)
+            console.log(chalk.yellow("Transaction fee : " +fee))
 
-            } else {
-                throw new Error(('Transaction not deployed ! Please check if funds are transferred successfully to the generated address'))
-            }
+            archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
+                console.log(chalk.magenta("Transaction confirmed with " + nbConfirmations + " replications"))
+            })
+
+            send_folder = await archethic.sendTransaction(transaction, argv.endpoint)
+            
+            console.log(chalk.cyan(Files[i]))
+            console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
+            array_files.push((Files[i].substring(Files[i].indexOf('/') + 1)))
+            array_address.push(address)
+
+            
         } catch (e) {
             console.error(chalk.red(e.message))
             return
@@ -183,17 +185,18 @@ exports.handler = async function (argv) {
                 .originSign(originPrivateKey)
 
             try {
-                send_folder = await archethic.sendTransaction(transaction, argv.endpoint)
-                archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
-                    console.log(nbConfirmations)
-                })
-                if (send_folder.status == 'ok') {
-                    console.log(chalk.green('Check your website at-'))
-                    console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
+                const { fee: fee } = await archethic.getTransactionFee(transaction, argv.endpoint)
+                console.log(chalk.yellow("Transaction fee : " +fee))
 
-                } else {
-                    throw new Error(('Transaction not deployed ! Please check if funds are transferred successfully to the generated address'))
-                }
+                archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
+                    console.log(chalk.magenta("Transaction confirmed with " + nbConfirmations + " replications"))
+                })
+
+                send_folder = await archethic.sendTransaction(transaction, argv.endpoint)
+                
+                console.log(chalk.green('Check your website at-'))
+                console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
+
             } catch (e) {
                 console.error(chalk.red(e.message))
                 return
