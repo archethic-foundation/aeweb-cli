@@ -102,6 +102,8 @@ exports.handler = async function (argv) {
             .originSign(originPrivateKey)
 
         try {
+            const { fee: fee } = await archethic.getTransactionFee(transaction, argv.endpoint)
+            console.log(chalk.yellow("Transaction fee : " +fee))
             send_folder = await archethic.sendTransaction(transaction, argv.endpoint)
             if (send_folder.status == 'ok') {
                 console.log(chalk.yellow(Files[i]))
