@@ -105,9 +105,11 @@ exports.handler = async function (argv) {
             const { fee: fee } = await archethic.getTransactionFee(transaction, argv.endpoint)
             console.log(chalk.yellow("Transaction fee : " +fee))
 
+
             archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
                 console.log(chalk.magenta("Transaction confirmed with " + nbConfirmations + " replications"))
             })
+
 
             send_folder = await archethic.sendTransaction(transaction, argv.endpoint)
             
