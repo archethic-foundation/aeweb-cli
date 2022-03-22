@@ -62,13 +62,13 @@ exports.handler = async function (argv) {
 
         
         archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
+            console.log(chalk.green("Transaction Sent Successfully !"))
+            console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + (toHex(transaction.address)) + "/content?mime=" + mime.getType(argv.file)))
             console.log(chalk.magenta("Transaction confirmed with " + nbConfirmations + " replications"))
         })
 
         send_file = await archethic.sendTransaction(transaction, argv.endpoint)
         
-        console.log(chalk.green("Transaction Sent Successfully !"))
-        console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + (toHex(transaction.address)) + "/content?mime=" + mime.getType(argv.file)))
         
     } catch (e) {
         console.error(chalk.red(e.message))
