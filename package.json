@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/archethic-foundation/aeweb-cli#readme",
   "dependencies": {
-    "archethic": "^1.4.0",
+    "archethic": "^1.5.0",
     "chalk": "^4.1.2",
     "crypto": "^1.0.1",
     "figlet": "^1.5.2",
