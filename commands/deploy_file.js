@@ -59,13 +59,20 @@ exports.handler = async function (argv) {
     try {
         const { fee: fee } = await archethic.getTransactionFee(transaction, argv.endpoint)
         console.log(chalk.yellow("Transaction fee : " +fee))
+
+        
+        archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
+            if(nbConfirmations == 1)
+            {
+                console.log(chalk.green("Transaction Sent Successfully !"))
+                console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + (toHex(transaction.address)) + "/content?mime=" + mime.getType(argv.file)))
+            }
+            console.log(chalk.magenta("Transaction confirmed with " + nbConfirmations + " replications"))
+        })
+
         send_file = await archethic.sendTransaction(transaction, argv.endpoint)
-        if (send_file.status == 'ok') {
-            console.log(chalk.green("Transaction Sent Successfully !"))
-            console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + (toHex(transaction.address)) + "/content?mime=" + mime.getType(argv.file)))
-        } else {
-            throw new Error("Transaction not deployed ! Please check if funds are transferred successfully to the generated address")
-        }
+        
+        
     } catch (e) {
         console.error(chalk.red(e.message))
         return
