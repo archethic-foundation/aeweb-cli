@@ -62,8 +62,11 @@ exports.handler = async function (argv) {
 
         
         archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
-            console.log(chalk.green("Transaction Sent Successfully !"))
-            console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + (toHex(transaction.address)) + "/content?mime=" + mime.getType(argv.file)))
+            if(nbConfirmations == 1)
+            {
+                console.log(chalk.green("Transaction Sent Successfully !"))
+                console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + (toHex(transaction.address)) + "/content?mime=" + mime.getType(argv.file)))
+            }
             console.log(chalk.magenta("Transaction confirmed with " + nbConfirmations + " replications"))
         })
 
