@@ -105,7 +105,7 @@ exports.handler = async function (argv) {
         try {
             const { fee: fee, rates: rates } = await archethic.getTransactionFee(transaction, argv.endpoint)
             
-
+            console.log(chalk.cyan(Files[i]))
             const ok = await yesno({
                 question:  chalk.yellow('The transaction would cost ' +fee+ ' UCO ($ ' +rates.usd+ ' € ' +rates.eur+ '). Do you want to confirm ?')
             });
@@ -115,7 +115,7 @@ exports.handler = async function (argv) {
             archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
                 if(nbConfirmations == 1)
                 {
-                    console.log(chalk.cyan(Files[i]))
+                    
                     console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
                 }
                 console.log(chalk.magenta("Transaction confirmed with " + nbConfirmations + " replications"))
