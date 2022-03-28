@@ -6,6 +6,7 @@ const mime = require('mime')
 const path = require('path')
 const crypto = require('crypto')
 const algo = 'sha256'
+const yesno = require('yesno');
 let Files = []
 let Seed = []
 let Address = []
@@ -102,8 +103,13 @@ exports.handler = async function (argv) {
             .originSign(originPrivateKey)
 
         try {
-            const { fee: fee } = await archethic.getTransactionFee(transaction, argv.endpoint)
+            const { fee: fee, rates: rates } = await archethic.getTransactionFee(transaction, argv.endpoint)
             console.log(chalk.yellow("Transaction fee : " +fee))
+            console.log(chalk.blueBright("UCO Price - " + rates.usd + " $ " +rates.eur+ " € "))
+
+            await yesno({
+                question: 'Are you sure you want to continue?'
+            });
 
 
             archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
