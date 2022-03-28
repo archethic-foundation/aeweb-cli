@@ -59,11 +59,9 @@ exports.handler = async function (argv) {
 
     try {
         const { fee: fee, rates: rates } = await archethic.getTransactionFee(transaction, argv.endpoint)
-        console.log(chalk.yellow("Transaction fee : " +fee))
-        console.log(chalk.blueBright("UCO Price - " + rates.usd + " $ " +rates.eur+ " € "))
         
         await yesno({
-            question: 'Are you sure you want to continue?'
+            question: chalk.yellow('The transaction would cost ' +fee+ ' UCO ($ ' +rates.usd+ ' € ' +rates.eur+ '). Do you want to confirm ?')
         });
 
         archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
