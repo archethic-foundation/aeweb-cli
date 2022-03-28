@@ -110,11 +110,12 @@ exports.handler = async function (argv) {
         try {
             const { fee: fee, rates: rates } = await archethic.getTransactionFee(transaction, argv.endpoint)
             
-            await yesno({
+            const ok = await yesno({
                 question:  chalk.yellow('The transaction would cost ' +fee+ ' UCO ($ ' +rates.usd+ ' € ' +rates.eur+ '). Do you want to confirm ?')
             });
 
-
+            if(ok)
+            {
             archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
                 if(nbConfirmations == 1)
                 {
@@ -129,6 +130,7 @@ exports.handler = async function (argv) {
             
             array_files.push((Files[i].substring(Files[i].indexOf('/') + 1)))
             array_address.push(address)
+            }
 
             
         } catch (e) {
@@ -197,11 +199,12 @@ exports.handler = async function (argv) {
                 const { fee: fee, rates: rates } = await archethic.getTransactionFee(transaction, argv.endpoint)
                
 
-                await yesno({
+                const ok = await yesno({
                     question:  chalk.yellow('The transaction would cost ' +fee+ ' UCO ($ ' +rates.usd+ ' € ' +rates.eur+ '). Do you want to confirm ?')
                 });
 
-
+                if(ok)
+                {
                 archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
                     if(nbConfirmations == 1)
                     {
@@ -212,7 +215,7 @@ exports.handler = async function (argv) {
                 })
 
                 send_folder = await archethic.sendTransaction(transaction, argv.endpoint)
-                
+                }
 
             } catch (e) {
                 console.error(chalk.red(e.message))
