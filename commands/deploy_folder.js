@@ -66,7 +66,7 @@ exports.handler = async function (argv) {
     tx = archethic.newTransactionBuilder("transfer")
 
     for (let i = 0; i < Address.length; i++) {
-        tx.addUCOTransfer(Address[i], 10.0)
+        tx.addUCOTransfer(Address[i], 1.0)
     }
 
     txn = tx
@@ -115,7 +115,7 @@ exports.handler = async function (argv) {
             archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
                 if(nbConfirmations == 1)
                 {
-                    
+                    console.log(chalk.gray(Files[i]+" deployed successfully"))
                     console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
                 }
                 console.log(chalk.magenta("Transaction confirmed with " + nbConfirmations + " replications"))
