@@ -3,6 +3,7 @@ const archethic = require('archethic')
 const originPrivateKey = "01009280BDB84B8F8AEDBA205FE3552689964A5626EE2C60AA10E3BF22A91A036009"
 const chalk = require('chalk')
 const mime = require('mime')
+const yesno = require('yesno');
 let transaction
 let send_file
 let index
@@ -57,10 +58,14 @@ exports.handler = async function (argv) {
 
 
     try {
-        const { fee: fee } = await archethic.getTransactionFee(transaction, argv.endpoint)
-        console.log(chalk.yellow("Transaction fee : " +fee))
-
+        const { fee: fee, rates: rates } = await archethic.getTransactionFee(transaction, argv.endpoint)
         
+        const ok = await yesno({
+            question: chalk.yellow('The transaction would cost ' +fee+ ' UCO ($ ' +rates.usd+ ' € ' +rates.eur+ '). Do you want to confirm ?')
+        });
+
+        if (ok)
+        {
         archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
             if(nbConfirmations == 1)
             {
@@ -71,6 +76,7 @@ exports.handler = async function (argv) {
         })
 
         send_file = await archethic.sendTransaction(transaction, argv.endpoint)
+        }
         
         
     } catch (e) {

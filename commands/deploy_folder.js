@@ -6,6 +6,7 @@ const mime = require('mime')
 const path = require('path')
 const crypto = require('crypto')
 const algo = 'sha256'
+const yesno = require('yesno');
 let Files = []
 let Seed = []
 let Address = []
@@ -65,7 +66,7 @@ exports.handler = async function (argv) {
     tx = archethic.newTransactionBuilder("transfer")
 
     for (let i = 0; i < Address.length; i++) {
-        tx.addUCOTransfer(Address[i], 10.0)
+        tx.addUCOTransfer(Address[i], 1.0)
     }
 
     txn = tx
@@ -102,14 +103,19 @@ exports.handler = async function (argv) {
             .originSign(originPrivateKey)
 
         try {
-            const { fee: fee } = await archethic.getTransactionFee(transaction, argv.endpoint)
-            console.log(chalk.yellow("Transaction fee : " +fee))
+            const { fee: fee, rates: rates } = await archethic.getTransactionFee(transaction, argv.endpoint)
+            
+            console.log(chalk.cyan(Files[i]))
+            const ok = await yesno({
+                question:  chalk.yellow('The transaction would cost ' +fee+ ' UCO ($ ' +rates.usd+ ' € ' +rates.eur+ '). Do you want to confirm ?')
+            });
 
-
+            if(ok)
+            {
             archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
                 if(nbConfirmations == 1)
                 {
-                    console.log(chalk.cyan(Files[i]))
+                    console.log(chalk.gray(Files[i]+" deployed successfully"))
                     console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
                 }
                 console.log(chalk.magenta("Transaction confirmed with " + nbConfirmations + " replications"))
@@ -117,7 +123,7 @@ exports.handler = async function (argv) {
 
 
             send_folder = await archethic.sendTransaction(transaction, argv.endpoint)
-            
+            }
             
         } catch (e) {
             console.error(chalk.red(e.message))
