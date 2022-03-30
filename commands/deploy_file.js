@@ -8,9 +8,6 @@ let transaction
 let send_file
 let index
 
-function toHex(bytes) {
-    return bytes.reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');
-}
 
 exports.command = 'deploy-file'
 
@@ -70,7 +67,7 @@ exports.handler = async function (argv) {
             if(nbConfirmations == 1)
             {
                 console.log(chalk.green("Transaction Sent Successfully !"))
-                console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + (toHex(transaction.address)) + "/content?mime=" + mime.getType(argv.file)))
+                console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(argv.file)))
             }
             console.log(chalk.magenta("Transaction confirmed with " + nbConfirmations + " replications"))
         })
