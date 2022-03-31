@@ -66,7 +66,7 @@ exports.handler = async function (argv) {
     tx = archethic.newTransactionBuilder("transfer")
 
     for (let i = 0; i < Address.length; i++) {
-        tx.addUCOTransfer(Address[i], 1.0)
+        tx.addUCOTransfer(Address[i], 10.0)
     }
 
     txn = tx
