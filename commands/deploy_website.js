@@ -1,226 +1,260 @@
-const fs = require('fs')
-const archethic = require('archethic')
-const originPrivateKey = "01009280BDB84B8F8AEDBA205FE3552689964A5626EE2C60AA10E3BF22A91A036009"
-const chalk = require('chalk')
-const mime = require('mime')
-const path = require('path')
-const crypto = require('crypto')
-const algo = 'sha256'
-const jsdom = require("jsdom")
-const { JSDOM } = jsdom
-const yesno = require('yesno');
-let Files = []
-let Seed = []
-let Address = []
-let array_files = []
-let array_address = []
-let tx
-let send_folder
-let index
+const fs = require("fs");
+const archethic = require("archethic");
+const originPrivateKey =
+  "01009280BDB84B8F8AEDBA205FE3552689964A5626EE2C60AA10E3BF22A91A036009";
+const chalk = require("chalk");
+const mime = require("mime");
+const path = require("path");
+const crypto = require("crypto");
+const algo = "sha256";
+const jsdom = require("jsdom");
+const { JSDOM } = jsdom;
+const yesno = require("yesno");
 
-exports.command = 'deploy-website'
 
-exports.describe = 'Deploy all files inside folder and target index.html file to automatically convert filepaths to transactions'
+exports.command = "deploy-website";
+
+exports.describe =
+  "Deploy all files inside folder and target index.html file to automatically convert filepaths to transactions";
 
 exports.builder = {
-    seed: {
-        describe: 'Seed is a string representing the transaction chain entropy to be able to derive and generate the keys for the transactions',
-        demandOption: true, // Required
-        type: 'string'
-    },
+  seed: {
+    describe:
+      "Seed is a string representing the transaction chain entropy to be able to derive and generate the keys for the transactions",
+    demandOption: true, // Required
+    type: "string",
+  },
 
-    endpoint: {
-        describe: 'Endpoint is the URL of a welcome node to receive the transaction',
-        demandOption: true, // Required
-        type: 'string'
-    },
+  endpoint: {
+    describe:
+      "Endpoint is the URL of a welcome node to receive the transaction",
+    demandOption: true, // Required
+    type: "string",
+  },
 
-    folder: {
-        describe: 'Folder is the name of folder',
-        demandOption: true, // Required
-        type: 'string'
-    }
-}
+  folder: {
+    describe: "Folder is the name of folder",
+    demandOption: true, // Required
+    type: "string",
+  },
+};
 
 exports.handler = async function (argv) {
-    function ReadDirectory(Directory) {
-        try {
-            fs.readdirSync(Directory).forEach(File => {
-                const abs = path.join(Directory, File);
-                if (fs.statSync(abs).isDirectory()) return ReadDirectory(abs);
-                else return Files.push(abs);
-            });
-        } catch (e) {
-            console.error(chalk.red(e.message))
-            return
-        }
-    }
+  const path_struct = {};
+  const node_endpoint = argv.endpoint;
 
+  function ReadDirectory(Directory) {
+    try {
+      fs.readdirSync(Directory).forEach((File) => {
+        const abs = path.join(Directory, File);
+
+        if (fs.statSync(abs).isDirectory()) return ReadDirectory(abs);
+        else {
+          if (Directory !== argv.folder) {
+            const key = Directory.replace(argv.folder + "/", "") + "/" + File;
+            path_struct[key] = {
+              seed: "",
+              address: "",
+              full_file_path: abs,
+            };
+            return;
+          } else {
+            path_struct[File] = {
+              seed: "",
+              address: "",
+              full_file_path: abs,
+            };
+            return;
+          }
+        }
+      });
+    } catch (e) {
+      console.error(e.message);
+      return;
+    }
+  }
+
+  (async () => {
+    // Read Dir and Created a files
     ReadDirectory(argv.folder);
 
+    // Here we have a Files array with all file names
+    const Files = Object.keys(path_struct);
+
     for (let i = 0; i < Files.length; i++) {
-        const hmac = crypto.createHmac(algo, argv.seed);
-        hmac.update(Files[i])
-        const seed = hmac.digest('hex')
-        Seed.push(seed)
-        const address = archethic.deriveAddress(seed, 0)
-        Address.push(address)
+      const seed = crypto
+        .createHmac(algo, argv.seed)
+        .update(path_struct[Files[i]].full_file_path)
+        .digest("hex");
+
+      path_struct[Files[i]].seed = seed;
+      const address = archethic.deriveAddress(seed, 0);
+
+      path_struct[Files[i]].address = address;
     }
 
-    tx = archethic.newTransactionBuilder("transfer")
+    console.log(Object.keys(path_struct).length);
+    // Seeds and Addresses Generated for all file paths
 
-    for (let i = 0; i < Address.length; i++) {
-        tx.addUCOTransfer(Address[i], 1.0)
-    }
+    // Transfer 1 UCO to all above generated addresses
 
-    txn = tx
-        .build(argv.seed, 0)
-        .originSign(originPrivateKey)
+    let tx = archethic.newTransactionBuilder("transfer");
 
+    // Add a UCO Transfer to all the addresses generated in above step for 1.0 UCO.
+    Object.keys(path_struct).forEach((key) => {
+      tx.addUCOTransfer(path_struct[key].address, 1.0);
+    });
+
+    // Build the transaction with root seed given by the user and sign the transaction with origin private key.
+    let txn = tx.build(argv.seed, 0).originSign(originPrivateKey);
+
+    // Send the transaction to user provided endpoint.
     try {
-        await archethic.sendTransaction(txn, argv.endpoint)
+      await archethic.sendTransaction(txn, node_endpoint);
     } catch (e) {
-        console.error(chalk.red(e.message))
-        return
+      console.error(e.message);
+      return;
     }
 
-    for (let i = 0; i < Files.length; i++) {
+    const creatednewFiles = new Promise(async (resolve, reject) => {
+      let keys = Object.keys(path_struct);
+      for (let i = 0; i < keys.length; ++i) {
+        const file_obj = path_struct[keys[i]];
+        if (file_obj.full_file_path.includes(".html")) {
+          const dom = await JSDOM.fromFile(file_obj.full_file_path);
 
-        const hmac = crypto.createHmac(algo, argv.seed);
-        hmac.update(Files[i])
-        const seed = hmac.digest('hex')
-        const address = archethic.deriveAddress(seed, 0)
+          var nodelist = dom.window.document.querySelectorAll("[src],[href]");
 
-        const content = fs.readFileSync(Files[i])
+          for (let i = 0; i < nodelist.length; ++i) {
+            var item = nodelist[i];
 
-        transaction = null
-        const txBuilder = archethic.newTransactionBuilder("hosting")
-        txBuilder.setContent(content)
+            let src = item.getAttribute("src");
+            let href = item.getAttribute("href");
 
-        try {
-            index = await archethic.getTransactionIndex(address, argv.endpoint)
-        } catch (e) {
-            console.error(chalk.red(e.message))
-            return
-        }
-        transaction = txBuilder
-            .build(seed, index)
-            .originSign(originPrivateKey)
+            if (src || href) {
+              if (src !== null && src in path_struct) {
+                const link =
+                  node_endpoint +
+                  "/api/last_transaction/" +
+                  path_struct[src].address +
+                  "/content?mime=" +
+                  mime.getType(src);
 
-        try {
-            const { fee: fee, rates: rates } = await archethic.getTransactionFee(transaction, argv.endpoint)
-            console.log(chalk.cyan(Files[i]))
-            const ok = await yesno({
-                question:  chalk.yellow('The transaction would cost ' +fee+ ' UCO ($ ' +rates.usd+ ' € ' +rates.eur+ '). Do you want to confirm ?')
-            });
+                item.setAttribute("src", link);
+              }
 
-            if(ok)
-            {
-            archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
-                if(nbConfirmations == 1)
-                {
-                    console.log(chalk.gray(Files[i]+" deployed successfully"))
-                    console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
-                }
-                console.log(chalk.magenta("Transaction confirmed with " + nbConfirmations + " replications"))
-            })
+              if (href !== null && href in path_struct) {
+                const link =
+                  node_endpoint +
+                  "/api/last_transaction/" +
+                  path_struct[href].address +
+                  "/content?mime=" +
+                  mime.getType(href);
 
-
-            send_folder = await archethic.sendTransaction(transaction, argv.endpoint)
-            
-            array_files.push((Files[i].substring(Files[i].indexOf('/') + 1)))
-            array_address.push(address)
+                item.setAttribute("href", link);
+              }
             }
 
-            
-        } catch (e) {
-            console.error(chalk.red(e.message))
-            return
-        }
+            data = dom.serialize();
 
-    }
-
-    for (let i = 0; i < array_files.length; i++) {
-        if ((array_files[i] == 'index.html')) {
-
-            const dom = await JSDOM.fromFile(argv.folder + "/index.html")
-
-            var nodelist = dom.window.document.querySelectorAll('[src],[href]');
-
-            for (let i = 0; i < nodelist.length; ++i) {
-                var item = nodelist[i];
-
-
-                for (let i = 0; i < array_files.length; i++) {
-
-                    if (String(item.getAttribute('src')).substring(String(item.getAttribute('src')).lastIndexOf('/') + 1) == (array_files[i].substring(array_files[i].lastIndexOf('/') + 1))) {
-                        item.setAttribute('src', argv.endpoint + "/api/last_transaction/" + array_address[i] + "/content?mime=" + mime.getType(array_files[i]))
-                    }
-
-                    if (String(item.getAttribute('href')).substring(String(item.getAttribute('href')).lastIndexOf('/') + 1) == (array_files[i].substring(array_files[i].lastIndexOf('/') + 1))) {
-                        item.setAttribute('href', argv.endpoint + "/api/last_transaction/" + array_address[i] + "/content?mime=" + mime.getType(array_files[i]))
-                    }
-                }
-
-
-            }
-
-            data = dom.serialize()
             try {
-                fs.writeFileSync(argv.folder + "/index.html", data)
-
+              fs.writeFileSync(file_obj.full_file_path, data);
             } catch (err) {
-                console.error(err)
+              console.error(err);
             }
-
-
-            const hmac = crypto.createHmac(algo, argv.seed);
-            hmac.update(argv.folder + "/index.html")
-            const seed = hmac.digest('hex')
-            const address = archethic.deriveAddress(seed, 0)
-
-            const content = fs.readFileSync(argv.folder + "/index.html")
-
-            transaction = null
-            const txBuilder = archethic.newTransactionBuilder("hosting")
-            txBuilder.setContent(content)
-
-            try {
-                index = await archethic.getTransactionIndex(address, argv.endpoint)
-            } catch (e) {
-                console.error(chalk.red(e.message))
-                return
-            }
-            transaction = txBuilder
-                .build(seed, index)
-                .originSign(originPrivateKey)
-
-            try {
-                const { fee: fee, rates: rates } = await archethic.getTransactionFee(transaction, argv.endpoint)
-               
-
-                const ok = await yesno({
-                    question:  chalk.yellow('The transaction would cost ' +fee+ ' UCO ($ ' +rates.usd+ ' € ' +rates.eur+ '). Do you want to confirm ?')
-                });
-
-                if(ok)
-                {
-                archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
-                    if(nbConfirmations == 1)
-                    {
-                        console.log(chalk.green('Check your website at-'))
-                        console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
-                    }
-                    console.log(chalk.magenta("Transaction confirmed with " + nbConfirmations + " replications"))
-                })
-
-                send_folder = await archethic.sendTransaction(transaction, argv.endpoint)
-                }
-
-            } catch (e) {
-                console.error(chalk.red(e.message))
-                return
-            }
+          }
         }
-    }
-}
+      }
+
+      resolve(path_struct);
+    });
+
+    creatednewFiles.then(async (res) => {
+      const keys = Object.keys(res);
+      console.log(chalk.bgRed("Total File Found: " + keys.length));
+
+      let tfee = 0;
+      let eur = 0;
+      let usd = 0;
+
+      let allTransactions = [];
+      for (let i = 0; i < keys.length; ++i) {
+        console.log(res[keys[i]]);
+        const content = fs.readFileSync(res[keys[i]].full_file_path);
+        let index;
+        const txBuilder = archethic
+          .newTransactionBuilder("hosting")
+          .setContent(content);
+
+        try {
+          index = await archethic.getTransactionIndex(
+            res[keys[i]].address,
+            node_endpoint
+          );
+        } catch (e) {
+          console.error(e.message);
+          return;
+        }
+
+        // This transaction is sent via seed for file path generated seed not from user supplied seed.
+        let transaction = txBuilder
+          .build(res[keys[i]].seed, index)
+          .originSign(originPrivateKey);
+
+        const { fee: fee, rates: rates } = await archethic.getTransactionFee(
+          transaction,
+          node_endpoint
+        );
+
+        tfee += fee;
+        usd += rates.usd;
+        eur += rates.eur;
+
+        allTransactions.push(transaction);
+      }
+
+      const ok = await yesno({
+        question:
+          "Total Fee Requirement would be : " +
+          tfee.toFixed(2) +
+          " UCO ( $ " +
+          usd.toFixed(2) +
+          " | € " +
+          eur.toFixed(2) +
+          " ). Do you want to continue. (yes/no)",
+      });
+
+      if (ok) {
+        let keys = Object.keys(path_struct);
+        allTransactions.forEach(async (transaction, index) => {
+          archethic.waitConfirmations(
+            transaction.address,
+            node_endpoint,
+            function (nbConfirmations) {
+              if (nbConfirmations == 1) {
+                console.log(
+                  "Created at File URI at Address: ",
+                  path_struct[keys[index]].address
+                );
+              }
+            }
+          );
+          try {
+            await archethic.sendTransaction(transaction, node_endpoint);
+          } catch (e) {
+            console.error(e);
+          }
+        });
+        console.log(
+          "Website is deployed at: ",
+          node_endpoint +
+            "/api/last_transaction/" +
+            path_struct["index.html"].address +
+            "/content?mime=text/html"
+        );
+      } else {
+        console.log("User aborted the Transactions.");
+      }
+    });
+  })();
+};
