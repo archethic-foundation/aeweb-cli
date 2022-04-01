@@ -1,17 +1,21 @@
-const fs = require('fs')
 const archethic = require('archethic')
-const originPrivateKey = "01009280BDB84B8F8AEDBA205FE3552689964A5626EE2C60AA10E3BF22A91A036009"
+const {
+    getindex,
+    readdir,
+    hmac,
+    feeconfirmation,
+    setcontent,
+    buildtxn,
+    sendtxn,
+    transfer
+} = require('../lib/functions')
 const chalk = require('chalk')
 const mime = require('mime')
-const path = require('path')
 const crypto = require('crypto')
 const algo = 'sha256'
-const yesno = require('yesno');
 let Files = []
 let Seed = []
 let Address = []
-let tx
-let send_folder
 let index
 
 exports.command = 'deploy-folder'
@@ -39,46 +43,14 @@ exports.builder = {
 }
 
 exports.handler = async function (argv) {
-    function ReadDirectory(Directory) {
-        try {
-            fs.readdirSync(Directory).forEach(File => {
-                const abs = path.join(Directory, File);
-                if (fs.statSync(abs).isDirectory()) return ReadDirectory(abs);
-                else return Files.push(abs);
-            });
-        } catch (e) {
-            console.error(chalk.red(e.message))
-            return
-        }
-    }
 
-    ReadDirectory(argv.folder);
+    readdir(argv.folder, Files)
 
-    for (let i = 0; i < Files.length; i++) {
-        const hmac = crypto.createHmac(algo, argv.seed);
-        hmac.update(Files[i])
-        const seed = hmac.digest('hex')
-        Seed.push(seed)
-        const address = archethic.deriveAddress(seed, 0)
-        Address.push(address)
-    }
+    hmac(Files, algo, argv.seed, Seed, Address)
 
-    tx = archethic.newTransactionBuilder("transfer")
+    transfer(Address, argv.seed)
 
-    for (let i = 0; i < Address.length; i++) {
-        tx.addUCOTransfer(Address[i], 1.0)
-    }
-
-    txn = tx
-        .build(argv.seed, 0)
-        .originSign(originPrivateKey)
-
-    try {
-        await archethic.sendTransaction(txn, argv.endpoint)
-    } catch (e) {
-        console.error(chalk.red(e.message))
-        return
-    }
+    await sendtxn(txn, argv.endpoint)
 
     for (let i = 0; i < Files.length; i++) {
         const hmac = crypto.createHmac(algo, argv.seed);
@@ -86,45 +58,29 @@ exports.handler = async function (argv) {
         const seed = hmac.digest('hex')
         const address = archethic.deriveAddress(seed, 0)
 
-        const content = fs.readFileSync(Files[i])
+        setcontent(Files[i])
 
-        transaction = null
-        const txBuilder = archethic.newTransactionBuilder("hosting")
-        txBuilder.setContent(content)
+        index = await getindex(address, argv.endpoint)
 
-        try {
-            index = await archethic.getTransactionIndex(address, argv.endpoint)
-        } catch (e) {
-            console.error(chalk.red(e.message))
-            return
-        }
-        transaction = txBuilder
-            .build(seed, index)
-            .originSign(originPrivateKey)
+        buildtxn(seed, index)
 
         try {
-            const { fee: fee, rates: rates } = await archethic.getTransactionFee(transaction, argv.endpoint)
-            
-            console.log(chalk.cyan(Files[i]))
-            const ok = await yesno({
-                question:  chalk.yellow('The transaction would cost ' +fee+ ' UCO ($ ' +rates.usd+ ' € ' +rates.eur+ '). Do you want to confirm ?')
-            });
 
-            if(ok)
-            {
-            archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
-                if(nbConfirmations == 1)
-                {
-                    console.log(chalk.gray(Files[i]+" deployed successfully"))
-                    console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
-                }
-                console.log(chalk.magenta("Transaction confirmed with " + nbConfirmations + " replications"))
-            })
+            const ok = await feeconfirmation(transaction, argv.endpoint)
+
+            if (ok) {
+                archethic.waitConfirmations(transaction.address, argv.endpoint, function (nbConfirmations) {
+                    if (nbConfirmations == 1) {
+                        console.log(chalk.gray(Files[i] + " deployed successfully"))
+                        console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
+                    }
+                    console.log(chalk.magenta("Transaction confirmed with " + nbConfirmations + " replications"))
+                })
 
 
-            send_folder = await archethic.sendTransaction(transaction, argv.endpoint)
+                send_folder = await sendtxn(transaction, argv.endpoint)
             }
-            
+
         } catch (e) {
             console.error(chalk.red(e.message))
             return

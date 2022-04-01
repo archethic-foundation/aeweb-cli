@@ -1,21 +1,17 @@
+const { readdir, hmac, feeconfirmation, setcontent, buildtxn, sendtxn, transfer, getindex } = require('../lib/functions')
 const fs = require('fs')
 const archethic = require('archethic')
-const originPrivateKey = "01009280BDB84B8F8AEDBA205FE3552689964A5626EE2C60AA10E3BF22A91A036009"
 const chalk = require('chalk')
 const mime = require('mime')
-const path = require('path')
 const crypto = require('crypto')
 const algo = 'sha256'
 const jsdom = require("jsdom")
 const { JSDOM } = jsdom
-const yesno = require('yesno');
 let Files = []
 let Seed = []
 let Address = []
 let array_files = []
 let array_address = []
-let tx
-let send_folder
 let index
 
 exports.command = 'deploy-website'
@@ -43,46 +39,17 @@ exports.builder = {
 }
 
 exports.handler = async function (argv) {
-    function ReadDirectory(Directory) {
-        try {
-            fs.readdirSync(Directory).forEach(File => {
-                const abs = path.join(Directory, File);
-                if (fs.statSync(abs).isDirectory()) return ReadDirectory(abs);
-                else return Files.push(abs);
-            });
-        } catch (e) {
-            console.error(chalk.red(e.message))
-            return
-        }
-    }
+    
+    readdir(argv.folder,Files)
 
-    ReadDirectory(argv.folder);
 
-    for (let i = 0; i < Files.length; i++) {
-        const hmac = crypto.createHmac(algo, argv.seed);
-        hmac.update(Files[i])
-        const seed = hmac.digest('hex')
-        Seed.push(seed)
-        const address = archethic.deriveAddress(seed, 0)
-        Address.push(address)
-    }
+    hmac(Files,algo,argv.seed,Seed,Address)
 
-    tx = archethic.newTransactionBuilder("transfer")
 
-    for (let i = 0; i < Address.length; i++) {
-        tx.addUCOTransfer(Address[i], 1.0)
-    }
+    transfer(Address, argv.seed)
 
-    txn = tx
-        .build(argv.seed, 0)
-        .originSign(originPrivateKey)
 
-    try {
-        await archethic.sendTransaction(txn, argv.endpoint)
-    } catch (e) {
-        console.error(chalk.red(e.message))
-        return
-    }
+    await sendtxn(txn,argv.endpoint)
 
     for (let i = 0; i < Files.length; i++) {
 
@@ -91,28 +58,18 @@ exports.handler = async function (argv) {
         const seed = hmac.digest('hex')
         const address = archethic.deriveAddress(seed, 0)
 
-        const content = fs.readFileSync(Files[i])
+        setcontent(Files[i])
 
-        transaction = null
-        const txBuilder = archethic.newTransactionBuilder("hosting")
-        txBuilder.setContent(content)
 
-        try {
-            index = await archethic.getTransactionIndex(address, argv.endpoint)
-        } catch (e) {
-            console.error(chalk.red(e.message))
-            return
-        }
-        transaction = txBuilder
-            .build(seed, index)
-            .originSign(originPrivateKey)
+        index = await getindex(address, argv.endpoint)
+
+
+        buildtxn(seed,index)
 
         try {
-            const { fee: fee, rates: rates } = await archethic.getTransactionFee(transaction, argv.endpoint)
-            console.log(chalk.cyan(Files[i]))
-            const ok = await yesno({
-                question:  chalk.yellow('The transaction would cost ' +fee+ ' UCO ($ ' +rates.usd+ ' € ' +rates.eur+ '). Do you want to confirm ?')
-            });
+            
+
+            const ok =  await feeconfirmation(transaction, argv.endpoint)
 
             if(ok)
             {
@@ -126,7 +83,7 @@ exports.handler = async function (argv) {
             })
 
 
-            send_folder = await archethic.sendTransaction(transaction, argv.endpoint)
+            send_folder =  await sendtxn(transaction,argv.endpoint)
             
             array_files.push((Files[i].substring(Files[i].indexOf('/') + 1)))
             array_address.push(address)
@@ -179,29 +136,20 @@ exports.handler = async function (argv) {
             const seed = hmac.digest('hex')
             const address = archethic.deriveAddress(seed, 0)
 
-            const content = fs.readFileSync(argv.folder + "/index.html")
 
-            transaction = null
-            const txBuilder = archethic.newTransactionBuilder("hosting")
-            txBuilder.setContent(content)
+            setcontent(argv.folder + "/index.html")
 
-            try {
-                index = await archethic.getTransactionIndex(address, argv.endpoint)
-            } catch (e) {
-                console.error(chalk.red(e.message))
-                return
-            }
-            transaction = txBuilder
-                .build(seed, index)
-                .originSign(originPrivateKey)
+
+            index = await getindex(address, argv.endpoint)
+
+
+            buildtxn(seed,index)
 
             try {
-                const { fee: fee, rates: rates } = await archethic.getTransactionFee(transaction, argv.endpoint)
-               
+                
 
-                const ok = await yesno({
-                    question:  chalk.yellow('The transaction would cost ' +fee+ ' UCO ($ ' +rates.usd+ ' € ' +rates.eur+ '). Do you want to confirm ?')
-                });
+                const ok =  await feeconfirmation(transaction, argv.endpoint)
+
 
                 if(ok)
                 {
@@ -214,7 +162,7 @@ exports.handler = async function (argv) {
                     console.log(chalk.magenta("Transaction confirmed with " + nbConfirmations + " replications"))
                 })
 
-                send_folder = await archethic.sendTransaction(transaction, argv.endpoint)
+                send_folder =  await sendtxn(transaction,argv.endpoint)
                 }
 
             } catch (e) {
