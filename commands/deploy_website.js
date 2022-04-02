@@ -11,7 +11,6 @@ const jsdom = require("jsdom");
 const { JSDOM } = jsdom;
 const yesno = require("yesno");
 
-
 exports.command = "deploy-website";
 
 exports.describe =
@@ -43,6 +42,15 @@ exports.handler = async function (argv) {
   const path_struct = {};
   const node_endpoint = argv.endpoint;
 
+  function pathStructure(filePath, mime) {
+    return {
+      seed: "",
+      address: "",
+      full_file_path: filePath,
+      mime: mime
+    };
+  }
+
   function ReadDirectory(Directory) {
     try {
       fs.readdirSync(Directory).forEach((File) => {
@@ -52,18 +60,14 @@ exports.handler = async function (argv) {
         else {
           if (Directory !== argv.folder) {
             const key = Directory.replace(argv.folder + "/", "") + "/" + File;
-            function pathStructure(filePath) {
-              {
-                seed: "",
-                address: "",
-                full_file_path: filePath
-              }
-             }
+            path_struct[key] = pathStructure(abs, mime.getType(File));
+          } else {
+            path_struct[File] = pathStructure(abs, mime.getType(File));
           }
         }
       });
     } catch (e) {
-      console.error(e.message);
+      console.error(chalk.red(e.message));
       return;
     }
   }
@@ -221,14 +225,19 @@ exports.handler = async function (argv) {
       if (ok) {
         let keys = Object.keys(path_struct);
         allTransactions.forEach(async (transaction, index) => {
-          archethic.waitConfirmations(
+          await archethic.waitConfirmations(
             transaction.address,
             node_endpoint,
             function (nbConfirmations) {
               if (nbConfirmations == 1) {
+
+                console.log("Got Confirmations: ", nbConfirmations);
                 console.log(
-                  "Created at File URI at Address: ",
-                  path_struct[keys[index]].address
+                  "Created a File at Address: ",
+                  node_endpoint +
+                    "/api/last_transaction/" +
+                    path_struct[keys[index]].address +
+                    "/content?mime=" + path_struct[keys[index]].mime
                 );
               }
             }
