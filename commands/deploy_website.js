@@ -52,19 +52,13 @@ exports.handler = async function (argv) {
         else {
           if (Directory !== argv.folder) {
             const key = Directory.replace(argv.folder + "/", "") + "/" + File;
-            path_struct[key] = {
-              seed: "",
-              address: "",
-              full_file_path: abs,
-            };
-            return;
-          } else {
-            path_struct[File] = {
-              seed: "",
-              address: "",
-              full_file_path: abs,
-            };
-            return;
+            function pathStructure(filePath) {
+              {
+                seed: "",
+                address: "",
+                full_file_path: filePath
+              }
+             }
           }
         }
       });
