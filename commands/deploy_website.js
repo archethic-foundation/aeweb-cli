@@ -47,7 +47,7 @@ exports.handler = async function (argv) {
       seed: "",
       address: "",
       full_file_path: filePath,
-      mime: mime
+      mime: mime,
     };
   }
 
@@ -91,7 +91,14 @@ exports.handler = async function (argv) {
       path_struct[Files[i]].address = address;
     }
 
-    console.log(Object.keys(path_struct).length);
+    // Check for index.html if not present abort the function
+    if (!path_struct.hasOwnProperty("index.html")) {
+      console.log(
+        chalk.red("index.html not found. Aborting the whole transaction!!")
+      );
+      return;
+    }
+
     // Seeds and Addresses Generated for all file paths
 
     // Transfer 1 UCO to all above generated addresses
@@ -110,7 +117,7 @@ exports.handler = async function (argv) {
     try {
       await archethic.sendTransaction(txn, node_endpoint);
     } catch (e) {
-      console.error(e.message);
+      console.error(chalk.red(e.message));
       return;
     }
 
@@ -177,8 +184,8 @@ exports.handler = async function (argv) {
 
       let allTransactions = [];
       for (let i = 0; i < keys.length; ++i) {
-        console.log(res[keys[i]]);
         const content = fs.readFileSync(res[keys[i]].full_file_path);
+        console.log(chalk.yellow("File found: " + res[keys[i]].full_file_path))
         let index;
         const txBuilder = archethic
           .newTransactionBuilder("hosting")
@@ -190,7 +197,7 @@ exports.handler = async function (argv) {
             node_endpoint
           );
         } catch (e) {
-          console.error(e.message);
+          console.error(chalk.red(e.message));
           return;
         }
 
@@ -212,14 +219,15 @@ exports.handler = async function (argv) {
       }
 
       const ok = await yesno({
-        question:
+        question: chalk.yellowBright(
           "Total Fee Requirement would be : " +
-          tfee.toFixed(2) +
-          " UCO ( $ " +
-          usd.toFixed(2) +
-          " | € " +
-          eur.toFixed(2) +
-          " ). Do you want to continue. (yes/no)",
+            tfee.toFixed(2) +
+            " UCO ( $ " +
+            usd.toFixed(2) +
+            " | € " +
+            eur.toFixed(2) +
+            " ). Do you want to continue. (yes/no)"
+        ),
       });
 
       if (ok) {
@@ -230,14 +238,18 @@ exports.handler = async function (argv) {
             node_endpoint,
             function (nbConfirmations) {
               if (nbConfirmations == 1) {
-
-                console.log("Got Confirmations: ", nbConfirmations);
                 console.log(
-                  "Created a File at Address: ",
-                  node_endpoint +
-                    "/api/last_transaction/" +
-                    path_struct[keys[index]].address +
-                    "/content?mime=" + path_struct[keys[index]].mime
+                  chalk.blue("Got Confirmations: " + nbConfirmations)
+                );
+                console.log(
+                  chalk.green(
+                    "Created a File at Address: ",
+                    node_endpoint +
+                      "/api/last_transaction/" +
+                      path_struct[keys[index]].address +
+                      "/content?mime=" +
+                      path_struct[keys[index]].mime
+                  )
                 );
               }
             }
@@ -249,14 +261,16 @@ exports.handler = async function (argv) {
           }
         });
         console.log(
-          "Website is deployed at: ",
-          node_endpoint +
-            "/api/last_transaction/" +
-            path_struct["index.html"].address +
-            "/content?mime=text/html"
+          chalk.green(
+            "Website is deployed at: ",
+            node_endpoint +
+              "/api/last_transaction/" +
+              path_struct["index.html"].address +
+              "/content?mime=text/html"
+          )
         );
       } else {
-        console.log("User aborted the Transactions.");
+        console.log(chalk.red("User aborted the website deployment."));
       }
     });
   })();
