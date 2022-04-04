@@ -1,12 +1,22 @@
-const { readdir, hmac, feeconfirmation, setcontent, buildtxn, sendtxn, transfer, getindex } = require('../lib/functions')
-const fs = require('fs')
+const {
+    feeconfirmation,
+    setcontent,
+    buildtxn,
+    sendtxn,
+    transfer,
+    getindex
+} = require('../lib/transaction_builder')
+const {
+    readdir,
+    hmac,
+    convert_file_to_transaction,
+    folder_waitConfirmations,
+    website_waitConfirmations
+} = require('../lib/file_management')
 const archethic = require('archethic')
 const chalk = require('chalk')
-const mime = require('mime')
 const crypto = require('crypto')
 const algo = 'sha256'
-const jsdom = require("jsdom")
-const { JSDOM } = jsdom
 let Files = []
 let Seed = []
 let Address = []
@@ -39,17 +49,18 @@ exports.builder = {
 }
 
 exports.handler = async function (argv) {
-    
-    readdir(argv.folder,Files)
+
+    readdir(argv.folder, Files)
 
 
-    hmac(Files,algo,argv.seed,Seed,Address)
+    hmac(Files, algo, argv.seed, Seed, Address)
 
 
     transfer(Address, argv.seed)
 
 
-    await sendtxn(txn,argv.endpoint)
+    await sendtxn(txn, argv.endpoint)
+
 
     for (let i = 0; i < Files.length; i++) {
 
@@ -64,32 +75,27 @@ exports.handler = async function (argv) {
         index = await getindex(address, argv.endpoint)
 
 
-        buildtxn(seed,index)
+        buildtxn(seed, index)
 
         try {
-            
-
-            const ok =  await feeconfirmation(transaction, argv.endpoint)
-
-            if(ok)
-            {
-            archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
-                if(nbConfirmations == 1)
-                {
-                    console.log(chalk.gray(Files[i]+" deployed successfully"))
-                    console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
-                }
-                console.log(chalk.magenta("Transaction confirmed with " + nbConfirmations + " replications"))
-            })
 
 
-            send_folder =  await sendtxn(transaction,argv.endpoint)
-            
-            array_files.push((Files[i].substring(Files[i].indexOf('/') + 1)))
-            array_address.push(address)
+            const ok = await feeconfirmation(transaction, argv.endpoint)
+
+            if (ok) {
+                
+                x = Files[i]
+                
+                folder_waitConfirmations(transaction,address,argv.endpoint,x)
+                
+
+                send_folder = await sendtxn(transaction, argv.endpoint)
+
+                array_files.push((Files[i].substring(Files[i].indexOf('/') + 1)))
+                array_address.push(address)
             }
 
-            
+
         } catch (e) {
             console.error(chalk.red(e.message))
             return
@@ -100,36 +106,8 @@ exports.handler = async function (argv) {
     for (let i = 0; i < array_files.length; i++) {
         if ((array_files[i] == 'index.html')) {
 
-            const dom = await JSDOM.fromFile(argv.folder + "/index.html")
 
-            var nodelist = dom.window.document.querySelectorAll('[src],[href]');
-
-            for (let i = 0; i < nodelist.length; ++i) {
-                var item = nodelist[i];
-
-
-                for (let i = 0; i < array_files.length; i++) {
-
-                    if (String(item.getAttribute('src')).substring(String(item.getAttribute('src')).lastIndexOf('/') + 1) == (array_files[i].substring(array_files[i].lastIndexOf('/') + 1))) {
-                        item.setAttribute('src', argv.endpoint + "/api/last_transaction/" + array_address[i] + "/content?mime=" + mime.getType(array_files[i]))
-                    }
-
-                    if (String(item.getAttribute('href')).substring(String(item.getAttribute('href')).lastIndexOf('/') + 1) == (array_files[i].substring(array_files[i].lastIndexOf('/') + 1))) {
-                        item.setAttribute('href', argv.endpoint + "/api/last_transaction/" + array_address[i] + "/content?mime=" + mime.getType(array_files[i]))
-                    }
-                }
-
-
-            }
-
-            data = dom.serialize()
-            try {
-                fs.writeFileSync(argv.folder + "/index.html", data)
-
-            } catch (err) {
-                console.error(err)
-            }
-
+            await convert_file_to_transaction(argv.folder, array_files, array_address, argv.endpoint)
 
             const hmac = crypto.createHmac(algo, argv.seed);
             hmac.update(argv.folder + "/index.html")
@@ -143,26 +121,21 @@ exports.handler = async function (argv) {
             index = await getindex(address, argv.endpoint)
 
 
-            buildtxn(seed,index)
+            buildtxn(seed, index)
 
             try {
-                
-
-                const ok =  await feeconfirmation(transaction, argv.endpoint)
 
 
-                if(ok)
-                {
-                archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
-                    if(nbConfirmations == 1)
-                    {
-                        console.log(chalk.green('Check your website at-'))
-                        console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
-                    }
-                    console.log(chalk.magenta("Transaction confirmed with " + nbConfirmations + " replications"))
-                })
+                const ok = await feeconfirmation(transaction, argv.endpoint)
 
-                send_folder =  await sendtxn(transaction,argv.endpoint)
+
+                if (ok) {
+                    
+                    x = Files[i]
+                    
+                    website_waitConfirmations(transaction,address,argv.endpoint,x)
+
+                    send_folder = await sendtxn(transaction, argv.endpoint)
                 }
 
             } catch (e) {

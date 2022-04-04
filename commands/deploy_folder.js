@@ -1,16 +1,18 @@
 const archethic = require('archethic')
 const {
     getindex,
-    readdir,
-    hmac,
     feeconfirmation,
     setcontent,
     buildtxn,
     sendtxn,
     transfer
-} = require('../lib/functions')
+} = require('../lib/transaction_builder')
+const {
+    readdir,
+    hmac,
+    folder_waitConfirmations
+} = require('../lib/file_management')
 const chalk = require('chalk')
-const mime = require('mime')
 const crypto = require('crypto')
 const algo = 'sha256'
 let Files = []
@@ -69,13 +71,10 @@ exports.handler = async function (argv) {
             const ok = await feeconfirmation(transaction, argv.endpoint)
 
             if (ok) {
-                archethic.waitConfirmations(transaction.address, argv.endpoint, function (nbConfirmations) {
-                    if (nbConfirmations == 1) {
-                        console.log(chalk.gray(Files[i] + " deployed successfully"))
-                        console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(Files[i])))
-                    }
-                    console.log(chalk.magenta("Transaction confirmed with " + nbConfirmations + " replications"))
-                })
+
+                x = Files[i]
+                
+                folder_waitConfirmations(transaction,address,argv.endpoint,x)
 
 
                 send_folder = await sendtxn(transaction, argv.endpoint)
@@ -87,4 +86,5 @@ exports.handler = async function (argv) {
         }
 
     }
+
 }

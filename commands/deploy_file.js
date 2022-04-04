@@ -1,4 +1,9 @@
-const { getindex, setcontent, buildtxn, feeconfirmation } = require('../lib/functions')
+const {
+    getindex,
+    setcontent,
+    buildtxn,
+    feeconfirmation
+} = require('../lib/transaction_builder')
 const archethic = require('archethic')
 const chalk = require('chalk')
 const mime = require('mime')
@@ -31,36 +36,34 @@ exports.builder = {
 }
 
 exports.handler = async function (argv) {
-   
+
     setcontent(argv.file)
-    
+
     const address = archethic.deriveAddress(argv.seed, 0)
-    
+
     index = await getindex(address, argv.endpoint)
-    
+
     transaction = buildtxn(argv.seed, index)
 
 
     try {
-        
-        const ok =  await feeconfirmation(transaction, argv.endpoint)
-      
-        if (ok)
-        {
-        archethic.waitConfirmations(transaction.address, argv.endpoint, function(nbConfirmations) {
-            if(nbConfirmations == 1)
-            {
-                console.log(chalk.green("Transaction Sent Successfully !"))
-                console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(argv.file)))
-            }
-            console.log(chalk.magenta("Transaction confirmed with " + nbConfirmations + " replications"))
-        })
 
-        send_file = await archethic.sendTransaction(transaction, argv.endpoint)
-          
+        const ok = await feeconfirmation(transaction, argv.endpoint)
+
+        if (ok) {
+            archethic.waitConfirmations(transaction.address, argv.endpoint, function (nbConfirmations) {
+                if (nbConfirmations == 1) {
+                    console.log(chalk.green("Transaction Sent Successfully !"))
+                    console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(argv.file)))
+                }
+                console.log(chalk.magenta("Transaction confirmed with " + nbConfirmations + " replications"))
+            })
+
+            send_file = await archethic.sendTransaction(transaction, argv.endpoint)
+
         }
-        
-        
+
+
     } catch (e) {
         console.error(e)
         return
