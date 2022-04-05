@@ -2,11 +2,11 @@ const {
     getindex,
     setcontent,
     buildtxn,
+    sendtxn,
     feeconfirmation
 } = require('../lib/transaction_builder')
+const { file_waitConfirmations } = require('../lib/file_management')
 const archethic = require('archethic')
-const chalk = require('chalk')
-const mime = require('mime')
 let transaction
 let index
 
@@ -51,15 +51,11 @@ exports.handler = async function (argv) {
         const ok = await feeconfirmation(transaction, argv.endpoint)
 
         if (ok) {
-            archethic.waitConfirmations(transaction.address, argv.endpoint, function (nbConfirmations) {
-                if (nbConfirmations == 1) {
-                    console.log(chalk.green("Transaction Sent Successfully !"))
-                    console.log(chalk.blue(argv.endpoint + "/api/last_transaction/" + address + "/content?mime=" + mime.getType(argv.file)))
-                }
-                console.log(chalk.magenta("Transaction confirmed with " + nbConfirmations + " replications"))
-            })
+           
+            file_waitConfirmations(transaction,address,argv.endpoint,argv.file)
 
-            send_file = await archethic.sendTransaction(transaction, argv.endpoint)
+
+            await sendtxn(transaction, argv.endpoint)
 
         }
 

@@ -10,10 +10,10 @@ const {
 const {
     readdir,
     hmac,
+    hmac2,
     folder_waitConfirmations
 } = require('../lib/file_management')
 const chalk = require('chalk')
-const crypto = require('crypto')
 const algo = 'sha256'
 let Files = []
 let Seed = []
@@ -55,10 +55,11 @@ exports.handler = async function (argv) {
     await sendtxn(txn, argv.endpoint)
 
     for (let i = 0; i < Files.length; i++) {
-        const hmac = crypto.createHmac(algo, argv.seed);
-        hmac.update(Files[i])
-        const seed = hmac.digest('hex')
-        const address = archethic.deriveAddress(seed, 0)
+       
+        x = Files[i]
+        let seed = hmac2(x, algo, argv.seed).seed
+        let address = hmac2(x, algo, argv.seed).address
+
 
         setcontent(Files[i])
 
@@ -77,7 +78,7 @@ exports.handler = async function (argv) {
                 folder_waitConfirmations(transaction,address,argv.endpoint,x)
 
 
-                send_folder = await sendtxn(transaction, argv.endpoint)
+                await sendtxn(transaction, argv.endpoint)
             }
 
         } catch (e) {

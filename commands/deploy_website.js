@@ -9,13 +9,12 @@ const {
 const {
     readdir,
     hmac,
+    hmac2,
     convert_file_to_transaction,
     folder_waitConfirmations,
     website_waitConfirmations
 } = require('../lib/file_management')
-const archethic = require('archethic')
 const chalk = require('chalk')
-const crypto = require('crypto')
 const algo = 'sha256'
 let Files = []
 let Seed = []
@@ -52,44 +51,36 @@ exports.handler = async function (argv) {
 
     readdir(argv.folder, Files)
 
-
     hmac(Files, algo, argv.seed, Seed, Address)
 
-
     transfer(Address, argv.seed)
-
 
     await sendtxn(txn, argv.endpoint)
 
 
     for (let i = 0; i < Files.length; i++) {
 
-        const hmac = crypto.createHmac(algo, argv.seed);
-        hmac.update(Files[i])
-        const seed = hmac.digest('hex')
-        const address = archethic.deriveAddress(seed, 0)
+        x = Files[i]
+        let seed = hmac2(x, algo, argv.seed).seed
+        let address = hmac2(x, algo, argv.seed).address
 
         setcontent(Files[i])
 
-
         index = await getindex(address, argv.endpoint)
-
 
         buildtxn(seed, index)
 
         try {
 
-
             const ok = await feeconfirmation(transaction, argv.endpoint)
 
             if (ok) {
-                
-                x = Files[i]
-                
-                folder_waitConfirmations(transaction,address,argv.endpoint,x)
-                
 
-                send_folder = await sendtxn(transaction, argv.endpoint)
+                x = Files[i]
+
+                folder_waitConfirmations(transaction, address, argv.endpoint, x)
+
+                await sendtxn(transaction, argv.endpoint)
 
                 array_files.push((Files[i].substring(Files[i].indexOf('/') + 1)))
                 array_address.push(address)
@@ -106,36 +97,31 @@ exports.handler = async function (argv) {
     for (let i = 0; i < array_files.length; i++) {
         if ((array_files[i] == 'index.html')) {
 
-
             await convert_file_to_transaction(argv.folder, array_files, array_address, argv.endpoint)
 
-            const hmac = crypto.createHmac(algo, argv.seed);
-            hmac.update(argv.folder + "/index.html")
-            const seed = hmac.digest('hex')
-            const address = archethic.deriveAddress(seed, 0)
+            y = argv.folder + "/index.html"
 
+            let seed = hmac2(y, algo, argv.seed).seed
+
+            let address = hmac2(y, algo, argv.seed).address
 
             setcontent(argv.folder + "/index.html")
 
-
             index = await getindex(address, argv.endpoint)
-
 
             buildtxn(seed, index)
 
             try {
 
-
                 const ok = await feeconfirmation(transaction, argv.endpoint)
 
-
                 if (ok) {
-                    
-                    x = Files[i]
-                    
-                    website_waitConfirmations(transaction,address,argv.endpoint,x)
 
-                    send_folder = await sendtxn(transaction, argv.endpoint)
+                    x = Files[i]
+
+                    website_waitConfirmations(transaction, address, argv.endpoint, x)
+
+                    await sendtxn(transaction, argv.endpoint)
                 }
 
             } catch (e) {
