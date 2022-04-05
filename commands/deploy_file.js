@@ -51,6 +51,8 @@ exports.handler = async function (argv) {
         const ok = await feeconfirmation(transaction, argv.endpoint)
 
         if (ok) {
+
+    
            
             file_waitConfirmations(transaction,address,argv.endpoint,argv.file)
 
