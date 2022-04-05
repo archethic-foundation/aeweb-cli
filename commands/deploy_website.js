@@ -1,18 +1,18 @@
 const {
     feeconfirmation,
-    setcontent,
+    buildHostingTransaction,
     buildtxn,
     sendtxn,
-    transfer,
-    getindex
-} = require('../lib/transaction_builder')
-const {
-    readdir,
-    hmac,
-    hmac2,
-    convert_file_to_transaction,
+    buildTransferTransaction,
+    getTransactionIndex,
     folder_waitConfirmations,
     website_waitConfirmations
+} = require('../lib/transaction_builder')
+const {
+    list_files_dir,
+    generate_seed_and_address_for_every_file,
+    generate_seed_and_address,
+    replace_file_paths_to_transaction_url
 } = require('../lib/file_management')
 const chalk = require('chalk')
 const algo = 'sha256'
@@ -49,11 +49,11 @@ exports.builder = {
 
 exports.handler = async function (argv) {
 
-    readdir(argv.folder, Files)
+    list_files_dir(argv.folder, Files)
 
-    hmac(Files, algo, argv.seed, Seed, Address)
+    generate_seed_and_address_for_every_file(Files, algo, argv.seed, Seed, Address)
 
-    transfer(Address, argv.seed)
+    buildTransferTransaction(Address, argv.seed)
 
     await sendtxn(txn, argv.endpoint)
 
@@ -61,12 +61,12 @@ exports.handler = async function (argv) {
     for (let i = 0; i < Files.length; i++) {
 
         x = Files[i]
-        let seed = hmac2(x, algo, argv.seed).seed
-        let address = hmac2(x, algo, argv.seed).address
+        let seed = generate_seed_and_address(x, algo, argv.seed).seed
+        let address = generate_seed_and_address(x, algo, argv.seed).address
 
-        setcontent(Files[i])
+        buildHostingTransaction(Files[i])
 
-        index = await getindex(address, argv.endpoint)
+        index = await getTransactionIndex(address, argv.endpoint)
 
         buildtxn(seed, index)
 
@@ -97,17 +97,17 @@ exports.handler = async function (argv) {
     for (let i = 0; i < array_files.length; i++) {
         if ((array_files[i] == 'index.html')) {
 
-            await convert_file_to_transaction(argv.folder, array_files, array_address, argv.endpoint)
+            await replace_file_paths_to_transaction_url(argv.folder, array_files, array_address, argv.endpoint)
 
             y = argv.folder + "/index.html"
 
-            let seed = hmac2(y, algo, argv.seed).seed
+            let seed = generate_seed_and_address(y, algo, argv.seed).seed
 
-            let address = hmac2(y, algo, argv.seed).address
+            let address = generate_seed_and_address(y, algo, argv.seed).address
 
-            setcontent(argv.folder + "/index.html")
+            buildHostingTransaction(argv.folder + "/index.html")
 
-            index = await getindex(address, argv.endpoint)
+            index = await getTransactionIndex(address, argv.endpoint)
 
             buildtxn(seed, index)
 

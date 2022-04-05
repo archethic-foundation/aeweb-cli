@@ -1,17 +1,17 @@
 const archethic = require('archethic')
 const {
-    getindex,
+    getTransactionIndex,
     feeconfirmation,
-    setcontent,
     buildtxn,
     sendtxn,
-    transfer
+    buildTransferTransaction,
+    buildHostingTransaction,
+    folder_waitConfirmations
 } = require('../lib/transaction_builder')
 const {
-    readdir,
-    hmac,
-    hmac2,
-    folder_waitConfirmations
+    list_files_dir,
+    generate_seed_and_address_for_every_file,
+    generate_seed_and_address
 } = require('../lib/file_management')
 const chalk = require('chalk')
 const algo = 'sha256'
@@ -46,24 +46,24 @@ exports.builder = {
 
 exports.handler = async function (argv) {
 
-    readdir(argv.folder, Files)
+    list_files_dir(argv.folder, Files)
 
-    hmac(Files, algo, argv.seed, Seed, Address)
+    generate_seed_and_address_for_every_file(Files, algo, argv.seed, Seed, Address)
 
-    transfer(Address, argv.seed)
+    buildTransferTransaction(Address, argv.seed)
 
     await sendtxn(txn, argv.endpoint)
 
     for (let i = 0; i < Files.length; i++) {
        
         x = Files[i]
-        let seed = hmac2(x, algo, argv.seed).seed
-        let address = hmac2(x, algo, argv.seed).address
+        let seed = generate_seed_and_address(x, algo, argv.seed).seed
+        let address = generate_seed_and_address(x, algo, argv.seed).address
 
 
-        setcontent(Files[i])
+        buildHostingTransaction(Files[i])
 
-        index = await getindex(address, argv.endpoint)
+        index = await getTransactionIndex(address, argv.endpoint)
 
         buildtxn(seed, index)
 

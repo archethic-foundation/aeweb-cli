@@ -1,11 +1,11 @@
 const {
-    getindex,
-    setcontent,
+    getTransactionIndex,
+    buildHostingTransaction,
     buildtxn,
     sendtxn,
-    feeconfirmation
+    feeconfirmation,
+    file_waitConfirmations
 } = require('../lib/transaction_builder')
-const { file_waitConfirmations } = require('../lib/file_management')
 const archethic = require('archethic')
 let transaction
 let index
@@ -37,11 +37,11 @@ exports.builder = {
 
 exports.handler = async function (argv) {
 
-    setcontent(argv.file)
+    buildHostingTransaction(argv.file)
 
     const address = archethic.deriveAddress(argv.seed, 0)
 
-    index = await getindex(address, argv.endpoint)
+    index = await getTransactionIndex(address, argv.endpoint)
 
     transaction = buildtxn(argv.seed, index)
 
