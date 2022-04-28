@@ -1,18 +1,18 @@
-# ÆWeb
+# AEWeb
 
-This is ÆWeb Cli repository! 
+This is AEWeb Cli repository! 
 
 This command line interface enables you to deploy files/ websites / folders (.jpg, .png, .pdf, .html, etc...) on top of Archethic Public Blockchain.
 
 
 ## Instructions
 
-To get the ÆWeb CLI, you need NodeJS (latest version) installed. Then you need to install the CLI, using:
+To get the AEWeb CLI, you need NodeJS (latest version) installed. Then you need to install the CLI, using:
 ```bash
 npm install aeweb -g
 ```
 
-To check if ÆWeb CLI is installed successfully, try :
+To check if AEWeb CLI is installed successfully, try :
 ```bash
 aeweb about
 ```
