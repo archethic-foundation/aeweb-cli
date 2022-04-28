@@ -1,8 +1,9 @@
 # ÆWeb
 
-Welcome to the ÆWeb Cli repository ! This command line interface enables you to deploy files on top of ARCHEthic Public Blockchain.
+This is ÆWeb Cli repository! 
 
-Using this cli you can deploy a single page website
+This command line interface enables you to deploy files/ websites / folders (.jpg, .png, .pdf, .html, etc...) on top of Archethic Public Blockchain.
+
 
 ## Instructions
 
