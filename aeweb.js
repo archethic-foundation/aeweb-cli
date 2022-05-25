@@ -1,21 +1,15 @@
 #!/usr/bin/env node
 
-const yargs = require('yargs')
+import yargs from 'yargs'
+import { hideBin } from 'yargs/helpers'
+import about from './commands/about.js'
+import generate_address from './commands/generate_address.js'
+import deploy from './commands/deploy.js'
 
-yargs.command(require('./commands/about'))
-    .help()
+const y = yargs(hideBin(process.argv))
 
-yargs.command((require('./commands/generate_address')))
-    .help()
+y.command(about).help()
+y.command(generate_address).help()
+y.command(deploy).help()
 
-yargs.command((require('./commands/deploy_file')))
-    .help()
-
-yargs.command((require('./commands/deploy_folder')))
-    .help()
-
-yargs.command((require('./commands/deploy_website')))
-    .help()
-
-
-yargs.parse()
+y.parse()
