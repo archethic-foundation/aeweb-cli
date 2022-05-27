@@ -49,7 +49,7 @@ const handler = async function (argv) {
       if (stats.isDirectory()) {
         json = handleDirectory(argv.path)
       } else {
-        json[path.basename(argv.folder)] = handleFile(argv.path)
+        json[path.basename(argv.path)] = handleFile(argv.path)
       }
 
       if (Object.keys(json).length === 0) {
