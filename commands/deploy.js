@@ -92,6 +92,12 @@ const handler = async function (argv) {
         nbConfirmations => {
           console.log(chalk.blue("Got " + nbConfirmations + " confirmations"))
           console.log(
+            chalk.cyanBright(
+              "See transaction in explorer:",
+              endpoint + '/explorer/transaction/' + Buffer.from(tx.address).toString('hex')
+            )
+          )
+          console.log(
             chalk.green(
               (argStats.isDirectory() ? "Website": "File") + " is deployed at:",
               endpoint + "/api/web_hosting/" + firstAddress + '/'
