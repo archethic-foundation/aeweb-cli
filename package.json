@@ -1,6 +1,7 @@
 {
   "name": "aeweb",
   "version": "0.2.1",
+  "type": "module",
   "description": "A cli to deploy websites on top of ArchEthic",
   "bin": {
     "aeweb": "aeweb.js"
@@ -23,17 +24,10 @@
   },
   "homepage": "https://github.com/archethic-foundation/aeweb-cli#readme",
   "dependencies": {
-    "archethic": "^1.5.0",
-    "chalk": "^4.1.2",
-    "crypto": "^1.0.1",
+    "archethic": "^1.6.0",
+    "chalk": "^5.0.1",
     "figlet": "^1.5.2",
-    "fs": "^0.0.1-security",
-    "isomorphic-ws": "^4.0.1",
-    "jsdom": "^19.0.0",
-    "mime": "^3.0.0",
-    "path": "^0.12.7",
-    "ws": "^8.5.0",
-    "yargs": "^17.3.0",
+    "yargs": "^17.5.1",
     "yesno": "^0.3.1"
   }
 }
