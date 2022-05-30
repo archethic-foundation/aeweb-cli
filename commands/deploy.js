@@ -44,9 +44,10 @@ const handler = async function (argv) {
     console.log(chalk.blue('Creating file structure and compress content...'))
 
     let json = {}
+    let argStats
     try {
-      const stats = fs.statSync(argv.path)
-      if (stats.isDirectory()) {
+      argStats = fs.statSync(argv.path)
+      if (argStats.isDirectory()) {
         json = handleDirectory(argv.path)
       } else {
         json[path.basename(argv.path)] = handleFile(argv.path)
@@ -92,7 +93,7 @@ const handler = async function (argv) {
           console.log(chalk.blue("Got " + nbConfirmations + " confirmations"))
           console.log(
             chalk.green(
-              "Website is deployed at:",
+              (argStats.isDirectory() ? "Website": "File") + " is deployed at:",
               endpoint + "/api/web_hosting/" + firstAddress + '/'
             )
           )
