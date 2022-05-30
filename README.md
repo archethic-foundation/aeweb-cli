@@ -24,26 +24,12 @@ To generate address you need -
 aeweb generate-address --seed=myseedphrase --index=0
 ```
 
-To deploy files you need -
+To deploy files, folder or website -
 - `seed` is a string representing the transaction chain entropy to be able to derive and generate the keys
 - `endpoint` is the URL of a welcome node to receive the transaction
-- `file` is the file path
+- `path` is the path of the folder or file you want to deploy
 ```bash
-aeweb deploy-file --seed=myseedphrase --endpoint=https://testnet.archethic.net --file=./index.html
-```
-To deploy folder you need -
-- `seed` is a string representing the transaction chain entropy to be able to derive and generate the keys
-- `endpoint` is the URL of a welcome node to receive the transaction
-- `folder` is the folder name
-```bash
-aeweb deploy-folder --seed=myseedphrase --endpoint=https://testnet.archethic.net --folder=Aeweb
-```
-To deploy website you need -
-- `seed` is a string representing the transaction chain entropy to be able to derive and generate the keys
-- `endpoint` is the URL of a welcome node to receive the transaction
-- `folder` is the folder name
-```bash
-aeweb deploy-website --seed=myseedphrase --endpoint=https://testnet.archethic.net --folder=Aeweb
+aeweb deploy --seed=myseedphrase --endpoint=https://testnet.archethic.net --path=./website
 ```
 
 ## Contribution
