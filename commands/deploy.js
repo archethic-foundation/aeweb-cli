@@ -4,6 +4,7 @@ import chalk from "chalk";
 import path from "path";
 import yesno from "yesno";
 import zlib from 'zlib'
+import { exit } from "process";
 
 const command = "deploy";
 
@@ -103,6 +104,7 @@ const handler = async function (argv) {
               endpoint + "/api/web_hosting/" + firstAddress + '/'
             )
           )
+          exit(0)
         }
       )
 
