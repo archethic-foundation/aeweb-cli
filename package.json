@@ -1,6 +1,6 @@
 {
   "name": "aeweb",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "type": "module",
   "description": "A cli to deploy websites on top of ArchEthic",
   "bin": {
