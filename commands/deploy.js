@@ -76,35 +76,64 @@ const handler = async function (argv) {
     let main_json_size = JSON.stringify(main_json).length
     while (main_json_size > MAX_CONTENT_SIZE) {
       // Get next tx address
-      const tx_address = archethic.deriveAddress(seed, index)
+      let tx_address = archethic.deriveAddress(seed, index + 1)
 
-      const tx_content = {}
+      let tx_content = {}
       let tx_content_size = 0
       let file = {}
       // Loop over files to create a content of Max size
-      while (main_json_size > MAX_CONTENT_SIZE
-        && tx_content_size < MAX_CONTENT_SIZE
-        && file) {
-        // Take the first file that can fill the content
-        file = files_size.find(elt => (tx_content_size + elt.size) <= MAX_FILE_SIZE)
+      // Create a transaction when the main_json_file is under the Max size
+      // or when there is no more file to fill the current tx content
+      while (main_json_size > MAX_CONTENT_SIZE && file) {
+        // Take the first file that can fill the content or the first file if content is empty
+        file = tx_content_size == 0 ? (
+          files_size[0]
+        ) : (
+          files_size.find(elt => (tx_content_size + elt.size) <= MAX_FILE_SIZE)
+        )
 
         if (file) {
           // retrieve json file path
           const tab_path = file.path.replace(argv.path, '').split(path.sep)
           if (tab_path[0] === '') { tab_path.shift() }
           // get file content in main_json
-          const file_content = get(main_json, tab_path)
+          const main_file = get(main_json, tab_path)
+          let content = main_file.content
+          main_file.content = []
+
+          // Handle file over than Max size. The file is splited in multiple transactions,
+          // firsts parts take a full transaction, the last part follow the normal sized file construction
+          while (content.length > MAX_FILE_SIZE) {
+            // split the file
+            const part = content.slice(0, MAX_FILE_SIZE)
+            content = content.replace(part, '')
+            // set the value in tx_content
+            set(tx_content, tab_path, part)
+            // update main_json to refer value at tx_address
+            main_file.content.push(tx_address)
+            set(main_json, tab_path, main_file)
+            // set the new size of main_json
+            main_json_size -= MAX_FILE_SIZE
+            file.size -= MAX_FILE_SIZE
+            // create the new transaction
+            transactions.push({ index, tx_content })
+            // increment index for next transaction
+            index++
+            tx_address = archethic.deriveAddress(seed, index + 1)
+            tx_content = {}
+          }
+
           // set the value in tx_content
-          set(tx_content, tab_path, file_content.content)
+          set(tx_content, tab_path, content)
           // update main_json to refer value at tx_address
-          file_content.content = [tx_address]
-          set(main_json, tab_path, file_content)
+          main_file.content.push(tx_address)
+          set(main_json, tab_path, main_file)
           // remove file from files_size
           files_size.splice(files_size.indexOf(file), 1)
           // set the new size of tx_content
           tx_content_size += file.size
           // set the new size of main_json
-          main_json_size = main_json_size - file.size + JSON.stringify([tx_address]).length
+          main_json_size -= file.size + JSON.stringify(main_file.content).length
         }
       }
 
