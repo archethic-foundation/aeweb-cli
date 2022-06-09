@@ -1,40 +1,40 @@
-import fs from "fs";
-import archethic from "archethic";
-import chalk from "chalk";
-import path from "path";
-import yesno from "yesno";
+import fs from 'fs';
+import archethic from 'archethic';
+import chalk from 'chalk';
+import path from 'path';
+import yesno from 'yesno';
 import zlib from 'zlib'
-import { exit } from "process";
+import { exit } from 'process';
 import get from 'lodash/get.js'
 import set from 'lodash/set.js'
 
 const MAX_CONTENT_SIZE = 3_145_728
 const MAX_FILE_SIZE = MAX_CONTENT_SIZE - 45_728 /* 45_728 represent json tree size */
 
-const command = "deploy";
+const command = 'deploy';
 
 const describe =
-  "Deploy a single file or all file inside a folder";
+  'Deploy a single file or all file inside a folder';
 
 const builder = {
   seed: {
     describe:
-      "Seed is a string representing the transaction chain entropy to be able to derive and generate the keys for the transactions",
+      'Seed is a string representing the transaction chain entropy to be able to derive and generate the keys for the transactions',
     demandOption: true, // Required
-    type: "string",
+    type: 'string',
   },
 
   endpoint: {
     describe:
-      "Endpoint is the URL of a welcome node to receive the transaction",
+      'Endpoint is the URL of a welcome node to receive the transaction',
     demandOption: true, // Required
-    type: "string",
+    type: 'string',
   },
 
   path: {
-    describe: "Path to the folder or the file to deploy",
+    describe: 'Path to the folder or the file to deploy',
     demandOption: true, // Required
-    type: "string",
+    type: 'string',
   },
 };
 
@@ -93,10 +93,10 @@ const handler = async function (argv) {
         )
 
         if (file) {
-          // retrieve json file path
+          // Retrieve json file path
           const tab_path = file.path.replace(argv.path, '').split(path.sep)
           if (tab_path[0] === '') { tab_path.shift() }
-          // get file content in main_json
+          // Get file content in main_json
           const main_file = get(main_json, tab_path)
           let content = main_file.content
           main_file.content = []
@@ -104,43 +104,43 @@ const handler = async function (argv) {
           // Handle file over than Max size. The file is splited in multiple transactions,
           // firsts parts take a full transaction, the last part follow the normal sized file construction
           while (content.length > MAX_FILE_SIZE) {
-            // split the file
+            // Split the file
             const part = content.slice(0, MAX_FILE_SIZE)
             content = content.replace(part, '')
-            // set the value in tx_content
+            // Set the value in tx_content
             set(tx_content, tab_path, part)
-            // update main_json to refer value at tx_address
+            // Update main_json to refer value at tx_address
             main_file.content.push(tx_address)
             set(main_json, tab_path, main_file)
-            // set the new size of main_json
+            // Set the new size of main_json
             main_json_size -= MAX_FILE_SIZE
             file.size -= MAX_FILE_SIZE
-            // create the new transaction
+            // Insert content for new transaction
             transactions.push({ index, tx_content })
-            // increment index for next transaction
+            // Increment index for next transaction
             index++
             tx_address = archethic.deriveAddress(seed, index + 1)
             tx_content = {}
           }
 
-          // set the value in tx_content
+          // Set the value in tx_content
           set(tx_content, tab_path, content)
-          // update main_json to refer value at tx_address
+          // Update main_json to refer value at tx_address
           main_file.content.push(tx_address)
           set(main_json, tab_path, main_file)
-          // remove file from files_size
+          // Remove file from files_size
           files_size.splice(files_size.indexOf(file), 1)
-          // set the new size of tx_content
+          // Set the new size of tx_content
           tx_content_size += file.size
-          // set the new size of main_json
+          // Set the new size of main_json
           main_json_size -= file.size + JSON.stringify(main_file.content).length
         }
       }
 
-      // create the new transaction
+      // Insert content for new transaction
       transactions.push({ index, tx_content })
 
-      // increment index for next transaction
+      // Increment index for next transaction
       index++
     }
 
@@ -171,18 +171,18 @@ const handler = async function (argv) {
     }
 
     console.log(chalk.yellowBright(
-      "Total Fee Requirement would be : " +
+      'Total Fee Requirement would be : ' +
       fees.toFixed(2) +
-      " UCO ( $ " +
+      ' UCO ( $ ' +
       (rates.usd * fees).toFixed(2) +
-      " | € " +
+      ' | € ' +
       (rates.eur * fees).toFixed(2) +
-      "), for " + transactions.length + " transactions."
+      '), for ' + transactions.length + ' transactions.'
     ))
 
     const ok = await yesno({
       question: chalk.yellowBright(
-        "Do you want to continue. (yes/no)"
+        'Do you want to continue. (yes/no)'
       ),
     });
 
@@ -193,15 +193,15 @@ const handler = async function (argv) {
         .then(() => {
           console.log(
             chalk.green(
-              (argStats.isDirectory() ? "Website" : "File") + " is deployed at:",
-              endpoint + "/api/web_hosting/" + firstAddress + '/'
+              (argStats.isDirectory() ? 'Website' : 'File') + ' is deployed at:',
+              endpoint + '/api/web_hosting/' + firstAddress + '/'
             )
           )
 
           exit(0)
         })
     } else {
-      throw "User aborted website deployment."
+      throw 'User aborted website deployment.'
     }
   } catch (e) {
     console.log(chalk.red(e))
@@ -245,10 +245,10 @@ async function sendTransaction(transactions, index, endpoint) {
       tx.address,
       endpoint,
       async nbConfirmations => {
-        console.log(chalk.blue("Got " + nbConfirmations + " confirmations"))
+        console.log(chalk.blue('Got ' + nbConfirmations + ' confirmations'))
         console.log(
           chalk.cyanBright(
-            "See transaction in explorer:",
+            'See transaction in explorer:',
             endpoint + '/explorer/transaction/' + Buffer.from(tx.address).toString('hex')
           )
         )
