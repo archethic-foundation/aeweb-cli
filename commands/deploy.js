@@ -150,7 +150,7 @@ const handler = async function (argv) {
     // Create transaction
     console.log(chalk.blue('Creating transaction(s), it may take a while...'))
 
-    const originPrivateKey = await archethic.getOriginKey(endpoint)
+    const originPrivateKey = archethic.getOriginKey()
 
     transactions = transactions.map(elt => {
       return archethic.newTransactionBuilder('hosting')
@@ -205,6 +205,7 @@ const handler = async function (argv) {
     }
   } catch (e) {
     console.log(chalk.red(e))
+    exit(1)
   }
 }
 
