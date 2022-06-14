@@ -178,21 +178,16 @@ const handler = async function (argv) {
     }
 
     // Create transfer transactions
-    const refTransferTx = archethic.newTransactionBuilder('transfer')
+    const transferTx = archethic.newTransactionBuilder('transfer')
       .addUCOTransfer(firstRefAddress, refTxFees)
+      .addUCOTransfer(firstFilesAdress, filesTxFees)
       .build(baseSeed, baseIndex)
       .originSign(originPrivateKey)
 
-    const filesTransferTx = archethic.newTransactionBuilder('transfer')
-      .addUCOTransfer(firstFilesAdress, filesTxFees)
-      .build(baseSeed, baseIndex + 1)
-      .originSign(originPrivateKey)
-
     let fees = refTxFees + filesTxFees
-    fees += (await archethic.getTransactionFee(refTransferTx, endpoint)).fee
-    fees += (await archethic.getTransactionFee(filesTransferTx, endpoint)).fee
+    fees += (await archethic.getTransactionFee(transferTx, endpoint)).fee
 
-    transactions.unshift(refTransferTx, filesTransferTx)
+    transactions.unshift(transferTx)
     transactions.push(refTx)
 
     console.log(chalk.yellowBright(
