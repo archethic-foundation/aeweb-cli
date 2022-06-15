@@ -1,144 +1,287 @@
-import fs from "fs";
-import archethic from "archethic";
-import chalk from "chalk";
-import path from "path";
-import yesno from "yesno";
+import fs from 'fs';
+import archethic from 'archethic';
+import chalk from 'chalk';
+import path from 'path';
+import yesno from 'yesno';
 import zlib from 'zlib'
-import { exit } from "process";
+import { exit } from 'process';
+import set from 'lodash/set.js'
 
-const command = "deploy";
+const MAX_CONTENT_SIZE = 3_145_728
+const MAX_FILE_SIZE = MAX_CONTENT_SIZE - 45_728 /* 45_728 represent json tree size */
+
+const command = 'deploy';
 
 const describe =
-  "Deploy a single file or all file inside a folder";
+  'Deploy a single file or all file inside a folder';
 
 const builder = {
   seed: {
     describe:
-      "Seed is a string representing the transaction chain entropy to be able to derive and generate the keys for the transactions",
+      'Seed is a string representing the transaction chain entropy to be able to derive and generate the keys for the transactions',
     demandOption: true, // Required
-    type: "string",
+    type: 'string',
   },
 
   endpoint: {
     describe:
-      "Endpoint is the URL of a welcome node to receive the transaction",
+      'Endpoint is the URL of a welcome node to receive the transaction',
     demandOption: true, // Required
-    type: "string",
+    type: 'string',
   },
 
   path: {
-    describe: "Path to the folder or the file to deploy",
+    describe: 'Path to the folder or the file to deploy',
     demandOption: true, // Required
-    type: "string",
+    type: 'string',
   },
 };
 
 const handler = async function (argv) {
   try {
     // Derive address and get last transaction index
-    const seed = argv.seed
     const endpoint = argv.endpoint
-    const firstAddress = archethic.deriveAddress(seed, 0)
-    const index = await archethic.getTransactionIndex(firstAddress, endpoint)
+    const folderPath = argv.path
 
-    // Convert directory structure to json
+    const baseSeed = argv.seed
+    const baseIndex = await archethic.getTransactionIndex(archethic.deriveAddress(baseSeed, 0), endpoint)
+
+    const refSeed = baseSeed + 'aeweb_ref'
+    const firstRefAddress = archethic.deriveAddress(refSeed, 0)
+    const refIndex = await archethic.getTransactionIndex(firstRefAddress, endpoint)
+
+    const filesSeed = baseSeed + 'aeweb_files'
+    const firstFilesAdress = archethic.deriveAddress(filesSeed, 0)
+    let filesIndex = await archethic.getTransactionIndex(firstFilesAdress, endpoint)
+
+    // Convert directory structure into array of file content
     console.log(chalk.blue('Creating file structure and compress content...'))
 
-    let json = {}
     let argStats
+    const files = []
     try {
-      argStats = fs.statSync(argv.path)
-      if (argStats.isDirectory()) {
-        json = handleDirectory(argv.path)
-      } else {
-        json[path.basename(argv.path)] = handleFile(argv.path)
-      }
+      argStats = fs.statSync(folderPath)
+      argStats.isDirectory() ? handleDirectory(folderPath, files) : handleFile(folderPath, files)
 
-      if (Object.keys(json).length === 0) {
-        throw { message: 'Folder ' + argv.path + ' is empty' }
+      if (files.length === 0) {
+        throw { message: 'Folder ' + folderPath + ' is empty' }
       }
     } catch (e) {
       throw e.message
     }
 
+    // Control size of json content
+    console.log(chalk.blue('Spliting file(s) content in multiple transaction if necessary ...'))
+
+    const refContent = {}
+    let transactions = []
+    files.sort((a, b) => b.size - a.size)
+    // Loop until all files are stored inside a transaction content
+    while (files.length > 0) {
+      // Get next tx address
+      let txAddress = archethic.deriveAddress(filesSeed, filesIndex + 1)
+
+      let txContent = {}
+      let txContentSize = 0
+      let file = {}
+      // Loop over files to create a content of Max size
+      // Create a transaction when there is no more file to fill the current tx content
+      while (file) {
+        // Take the first file that can fill the content or the first file if content is empty
+        file = txContentSize == 0 ? (
+          files[0]
+        ) : (
+          files.find(elt => (txContentSize + elt.size) <= MAX_FILE_SIZE)
+        )
+
+        if (file) {
+          // Create json file path
+          const tab_path = file.path.replace(folderPath, '').split(path.sep)
+          if (tab_path[0] === '') { tab_path.shift() }
+          let content = file.content
+          const refFileContent = {
+            encodage: file.encodage,
+            address: []
+          }
+
+          // Handle file over than Max size. The file is splited in multiple transactions,
+          // firsts parts take a full transaction, the last part follow the normal sized file construction
+          while (content.length > MAX_FILE_SIZE) {
+            // Split the file
+            const part = content.slice(0, MAX_FILE_SIZE)
+            content = content.replace(part, '')
+            // Set the value in txContent
+            set(txContent, tab_path, part)
+            // Update refContent to refer value at txAddress
+            refFileContent.address.push(txAddress)
+            set(refContent, tab_path, refFileContent)
+            // Set the new size of the file
+            file.size -= MAX_FILE_SIZE
+            // Insert content for new transaction
+            transactions.push({ filesIndex, txContent })
+            // Increment filesIndex for next transaction
+            filesIndex++
+            txAddress = archethic.deriveAddress(filesSeed, filesIndex + 1)
+            txContent = {}
+          }
+
+          // Set the value in txContent
+          set(txContent, tab_path, content)
+          // Update refContent to refer value at txAddress
+          refFileContent.address.push(txAddress)
+          set(refContent, tab_path, refFileContent)
+          // Remove file from files
+          files.splice(files.indexOf(file), 1)
+          // Set the new size of txContent
+          txContentSize += file.size
+        }
+      }
+
+      // Insert content for new transaction
+      transactions.push({ filesIndex, txContent })
+
+      // Increment filesIndex for next transaction
+      filesIndex++
+    }
+
     // Create transaction
-    console.log(chalk.blue('Creating transaction, it may take a while...'))
+    console.log(chalk.blue('Creating transactions, it may take a while...'))
 
-    const tx = archethic.newTransactionBuilder('hosting')
-      .setContent(JSON.stringify(json))
-      .build(seed, index)
-      .originSign(await archethic.getOriginKey(endpoint))
+    const originPrivateKey = archethic.getOriginKey()
 
-    // Get transaction fees and ask user
-    const { fee: fees, rates: rates } = await archethic.getTransactionFee(tx, endpoint)
+    const refTx = archethic.newTransactionBuilder('hosting')
+      .setContent(JSON.stringify(refContent))
+      .build(refSeed, refIndex)
+      .originSign(originPrivateKey)
+
+    transactions = transactions.map((elt) => {
+      return archethic.newTransactionBuilder('hosting')
+        .setContent(JSON.stringify(elt.txContent))
+        .build(filesSeed, elt.filesIndex)
+        .originSign(originPrivateKey)
+    })
+
+    // Get transactions fees and ask user
+    console.log(chalk.blue('Estimating fees...'))
+
+    // Estimate refTx fees
+    const slippage = 1.02
+
+    let { fee: fee, rates: rates } = await archethic.getTransactionFee(refTx, endpoint)
+    const refTxFees = +(fee * slippage).toFixed(8)
+
+    let filesTxFees = 0
+    // Estimate filesTx fees
+    for (const tx of transactions) {
+      ({ fee: fee } = await archethic.getTransactionFee(tx, endpoint))
+      filesTxFees += +(fee * slippage).toFixed(8)
+    }
+
+    // Create transfer transactions
+    const transferTx = archethic.newTransactionBuilder('transfer')
+      .addUCOTransfer(firstRefAddress, refTxFees)
+      .addUCOTransfer(firstFilesAdress, filesTxFees)
+      .build(baseSeed, baseIndex)
+      .originSign(originPrivateKey)
+
+    let fees = refTxFees + filesTxFees
+    fees += (await archethic.getTransactionFee(transferTx, endpoint)).fee
+
+    transactions.unshift(transferTx)
+    transactions.push(refTx)
+
+    console.log(chalk.yellowBright(
+      'Total Fee Requirement would be : ' +
+      fees.toFixed(2) +
+      ' UCO ( $ ' +
+      (rates.usd * fees).toFixed(2) +
+      ' | € ' +
+      (rates.eur * fees).toFixed(2) +
+      '), for ' + transactions.length + ' transactions.'
+    ))
 
     const ok = await yesno({
       question: chalk.yellowBright(
-        "Total Fee Requirement would be : " +
-        fees.toFixed(2) +
-        " UCO ( $ " +
-        (rates.usd * fees).toFixed(2) +
-        " | € " +
-        (rates.eur * fees).toFixed(2) +
-        " ). Do you want to continue. (yes/no)"
+        'Do you want to continue. (yes/no)'
       ),
     });
 
     if (ok) {
-      console.log(chalk.blue('Sending transaction...'))
+      console.log(chalk.blue('Sending ' + transactions.length  + ' transactions...'))
 
-      await archethic.waitConfirmations(
-        tx.address,
-        endpoint,
-        nbConfirmations => {
-          console.log(chalk.blue("Got " + nbConfirmations + " confirmations"))
-          console.log(
-            chalk.cyanBright(
-              "See transaction in explorer:",
-              endpoint + '/explorer/transaction/' + Buffer.from(tx.address).toString('hex')
-            )
-          )
+      await sendTransaction(transactions, 0, endpoint)
+        .then(() => {
+          // Send reference tx
           console.log(
             chalk.green(
-              (argStats.isDirectory() ? "Website": "File") + " is deployed at:",
-              endpoint + "/api/web_hosting/" + firstAddress + '/'
+              (argStats.isDirectory() ? 'Website' : 'File') + ' is deployed at:',
+              endpoint + '/api/web_hosting/' + firstRefAddress + '/'
             )
           )
-          exit(0)
-        }
-      )
 
-      await archethic.sendTransaction(tx, endpoint)
-      console.log(chalk.blue('Waiting transaction validation...'))
+          exit(0)
+        })
     } else {
-      throw "User aborted website deployment."
+      throw 'User aborted website deployment.'
     }
   } catch (e) {
     console.log(chalk.red(e))
+    exit(1)
   }
 }
 
-function handleFile(file) {
+function handleFile(file, files) {
   const data = fs.readFileSync(file)
-  return {
-    encodage: 'gzip',
-    content: zlib.gzipSync(data).toString('base64url')
-  }
+  const content = zlib.gzipSync(data).toString('base64url')
+  files.push({
+    path: file,
+    size: content.length,
+    content,
+    encodage: 'gzip'
+  })
 }
 
-function handleDirectory(entry) {
+function handleDirectory(entry, files) {
   const stats = fs.statSync(entry)
-  let json = {}
 
   if (stats.isDirectory()) {
     fs.readdirSync(entry).forEach(child => {
-      json[path.basename(child)] = handleDirectory(entry + '/' + child)
+      handleDirectory(entry + '/' + child, files)
     });
   } else {
-    json = handleFile(entry)
+    handleFile(entry, files)
   }
+}
 
-  return json;
+async function sendTransaction(transactions, index, endpoint) {
+  return new Promise(async (resolve, reject) => {
+    console.log(chalk.blue('Transaction ' + (index + 1) + '...'))
+    const tx = transactions[index]
+
+    await archethic.waitConfirmations(
+      tx.address,
+      endpoint,
+      async nbConfirmations => {
+        console.log(chalk.blue('Got ' + nbConfirmations + ' confirmations'))
+        console.log(
+          chalk.cyanBright(
+            'See transaction in explorer:',
+            endpoint + '/explorer/transaction/' + Buffer.from(tx.address).toString('hex')
+          )
+        )
+
+        if (index + 1 == transactions.length) {
+          resolve()
+        } else {
+          await sendTransaction(transactions, index + 1, endpoint)
+          resolve()
+        }
+      }
+    )
+
+    await archethic.sendTransaction(tx, endpoint)
+    console.log(chalk.blue('Waiting transaction validation...'))
+  })
 }
 
 export default {
