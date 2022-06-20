@@ -207,7 +207,7 @@ const handler = async function (argv) {
     });
 
     if (ok) {
-      console.log(chalk.blue('Sending ' + transactions.length  + ' transactions...'))
+      console.log(chalk.blue('Sending ' + transactions.length + ' transactions...'))
 
       await sendTransaction(transactions, 0, endpoint)
         .then(() => {
@@ -262,19 +262,21 @@ async function sendTransaction(transactions, index, endpoint) {
       tx.address,
       endpoint,
       async nbConfirmations => {
-        console.log(chalk.blue('Got ' + nbConfirmations + ' confirmations'))
-        console.log(
-          chalk.cyanBright(
-            'See transaction in explorer:',
-            endpoint + '/explorer/transaction/' + Buffer.from(tx.address).toString('hex')
+        if (nbConfirmations == 1) {
+          console.log(chalk.blue('Got confirmation'))
+          console.log(
+            chalk.cyanBright(
+              'See transaction in explorer:',
+              endpoint + '/explorer/transaction/' + Buffer.from(tx.address).toString('hex')
+            )
           )
-        )
 
-        if (index + 1 == transactions.length) {
-          resolve()
-        } else {
-          await sendTransaction(transactions, index + 1, endpoint)
-          resolve()
+          if (index + 1 == transactions.length) {
+            resolve()
+          } else {
+            await sendTransaction(transactions, index + 1, endpoint)
+            resolve()
+          }
         }
       }
     )
