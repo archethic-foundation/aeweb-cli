@@ -144,7 +144,6 @@ const handler = async function (argv) {
 
       // Insert content for new transaction
       transactions.push({ filesIndex, txContent })
-      console.log(txContent)
 
       // Increment filesIndex for next transaction
       filesIndex++
