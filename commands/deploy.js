@@ -41,7 +41,7 @@ const handler = async function (argv) {
   try {
     // Derive address and get last transaction index
     const endpoint = argv.endpoint
-    const folderPath = argv.path
+    let folderPath = path.normalize(argv.path.endsWith(path.sep) ? argv.path.slice(0, -1) : argv.path)
 
     const baseSeed = argv.seed
     const baseIndex = await archethic.getTransactionIndex(archethic.deriveAddress(baseSeed, 0), endpoint)
@@ -61,7 +61,12 @@ const handler = async function (argv) {
     const files = []
     try {
       argStats = fs.statSync(folderPath)
-      argStats.isDirectory() ? handleDirectory(folderPath, files) : handleFile(folderPath, files)
+      if (argStats.isDirectory()) {
+        handleDirectory(folderPath, files)
+      } else {
+        handleFile(folderPath, files)
+        folderPath = path.dirname(folderPath)
+      }
 
       if (files.length === 0) {
         throw { message: 'Folder ' + folderPath + ' is empty' }
@@ -139,6 +144,7 @@ const handler = async function (argv) {
 
       // Insert content for new transaction
       transactions.push({ filesIndex, txContent })
+      console.log(txContent)
 
       // Increment filesIndex for next transaction
       filesIndex++
@@ -246,7 +252,7 @@ function handleDirectory(entry, files) {
 
   if (stats.isDirectory()) {
     fs.readdirSync(entry).forEach(child => {
-      handleDirectory(entry + '/' + child, files)
+      handleDirectory(entry + path.sep + child, files)
     });
   } else {
     handleFile(entry, files)
