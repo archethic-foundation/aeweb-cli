@@ -170,22 +170,24 @@ const handler = async function (argv) {
     console.log(chalk.blue('Estimating fees...'))
 
     // Estimate refTx fees
-    const slippage = 1.02
+    const slippage = 1.01
 
     let { fee: fee, rates: rates } = await archethic.getTransactionFee(refTx, endpoint)
-    const refTxFees = +(fee * slippage).toFixed(8)
+    const refTxFees = Math.ceil(fee * slippage)
 
     let filesTxFees = 0
     // Estimate filesTx fees
     for (const tx of transactions) {
       ({ fee: fee } = await archethic.getTransactionFee(tx, endpoint))
-      filesTxFees += +(fee * slippage).toFixed(8)
+      filesTxFees += fee
     }
+
+    filesTxFees = Math.ceil(filesTxFees * slippage)
 
     // Create transfer transactions
     const transferTx = archethic.newTransactionBuilder('transfer')
-      .addUCOTransfer(firstRefAddress, refTxFees)
-      .addUCOTransfer(firstFilesAdress, filesTxFees)
+      .addUCOTransfer(firstRefAddress, archethic.fromBigInt(refTxFees))
+      .addUCOTransfer(firstFilesAdress, archethic.fromBigInt(filesTxFees))
       .build(baseSeed, baseIndex)
       .originSign(originPrivateKey)
 
@@ -195,9 +197,11 @@ const handler = async function (argv) {
     transactions.unshift(transferTx)
     transactions.push(refTx)
 
+    fees = archethic.fromBigInt(fees)
+
     console.log(chalk.yellowBright(
       'Total Fee Requirement would be : ' +
-      fees.toFixed(2) +
+      fees +
       ' UCO ( $ ' +
       (rates.usd * fees).toFixed(2) +
       ' | € ' +
