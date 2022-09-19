@@ -76,10 +76,27 @@ const handler = async function (argv) {
     }
 
     // Control size of json content
-    console.log(chalk.blue('Spliting file(s) content in multiple transaction if necessary ...'))
+    console.log(chalk.blue('Spliting file(s) content in multiple transaction if necessary, it may take a while... ...'))
+
+    const originPrivateKey = archethic.getOriginKey()
+    let transactions = []
+
+    const buildTx = (index, content) => {
+      transactions.push(
+        new Promise(async (resolve, reject) => {
+          const tx = archethic.newTransactionBuilder('hosting')
+            .setContent(JSON.stringify(content))
+            .build(filesSeed, index)
+            .originSign(originPrivateKey)
+
+          const fee = (await archethic.getTransactionFee(tx, endpoint)).fee
+
+          resolve({ tx, fee })
+        })
+      )
+    }
 
     const refContent = {}
-    let transactions = []
     files.sort((a, b) => b.size - a.size)
     // Loop until all files are stored inside a transaction content
     while (files.length > 0) {
@@ -122,8 +139,8 @@ const handler = async function (argv) {
             set(refContent, tab_path, refFileContent)
             // Set the new size of the file
             file.size -= MAX_FILE_SIZE
-            // Insert content for new transaction
-            transactions.push({ filesIndex, txContent })
+            // Create new transaction
+            buildTx(filesIndex, txContent)
             // Increment filesIndex for next transaction
             filesIndex++
             txAddress = archethic.deriveAddress(filesSeed, filesIndex + 1)
@@ -142,45 +159,35 @@ const handler = async function (argv) {
         }
       }
 
-      // Insert content for new transaction
-      transactions.push({ filesIndex, txContent })
+      // Create new transaction
+      buildTx(filesIndex, txContent)
 
       // Increment filesIndex for next transaction
       filesIndex++
     }
 
     // Create transaction
-    console.log(chalk.blue('Creating transactions, it may take a while...'))
-
-    const originPrivateKey = archethic.getOriginKey()
+    console.log(chalk.blue('Creating transactions and estimating fees ...'))
 
     const refTx = archethic.newTransactionBuilder('hosting')
       .setContent(JSON.stringify(refContent))
       .build(refSeed, refIndex)
       .originSign(originPrivateKey)
 
-    transactions = transactions.map((elt) => {
-      return archethic.newTransactionBuilder('hosting')
-        .setContent(JSON.stringify(elt.txContent))
-        .build(filesSeed, elt.filesIndex)
-        .originSign(originPrivateKey)
-    })
-
-    // Get transactions fees and ask user
-    console.log(chalk.blue('Estimating fees...'))
+    transactions = await Promise.all(transactions)
 
     // Estimate refTx fees
     const slippage = 1.01
 
-    let { fee: fee, rates: rates } = await archethic.getTransactionFee(refTx, endpoint)
+    const { fee: fee, rates: rates } = await archethic.getTransactionFee(refTx, endpoint)
     const refTxFees = Math.ceil(fee * slippage)
 
     let filesTxFees = 0
-    // Estimate filesTx fees
-    for (const tx of transactions) {
-      ({ fee: fee } = await archethic.getTransactionFee(tx, endpoint))
-      filesTxFees += fee
-    }
+
+    transactions = transactions.map(elt => {
+      filesTxFees += elt.fee
+      return elt.tx
+    })
 
     filesTxFees = Math.ceil(filesTxFees * slippage)
 
