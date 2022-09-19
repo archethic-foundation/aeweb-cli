@@ -218,9 +218,8 @@ const handler = async function (argv) {
     if (ok) {
       console.log(chalk.blue('Sending ' + transactions.length + ' transactions...'))
 
-      await sendTransaction(transactions, 0, endpoint)
+      await sendTransactions(transactions, 0, endpoint)
         .then(() => {
-          // Send reference tx
           console.log(
             chalk.green(
               (argStats.isDirectory() ? 'Website' : 'File') + ' is deployed at:',
@@ -229,6 +228,13 @@ const handler = async function (argv) {
           )
 
           exit(0)
+        })
+        .catch(error => {
+          console.log(
+            chalk.red('Transaction validation error : ' + error)
+          )
+
+          exit(1)
         })
     } else {
       throw 'User aborted website deployment.'
@@ -262,36 +268,34 @@ function handleDirectory(entry, files) {
   }
 }
 
-async function sendTransaction(transactions, index, endpoint) {
+async function sendTransactions(transactions, index, endpoint) {
   return new Promise(async (resolve, reject) => {
     console.log(chalk.blue('Transaction ' + (index + 1) + '...'))
     const tx = transactions[index]
 
-    await archethic.waitConfirmations(
-      tx.address,
-      endpoint,
-      async nbConfirmations => {
-        if (nbConfirmations == 1) {
-          console.log(chalk.blue('Got confirmation'))
-          console.log(
-            chalk.cyanBright(
-              'See transaction in explorer:',
-              endpoint + '/explorer/transaction/' + Buffer.from(tx.address).toString('hex')
-            )
+    archethic.newTransactionSender()
+      .on('requiredConfirmation', async (nbConf) => {
+        console.log(chalk.blue('Transaction confirmed !'))
+        console.log(
+          chalk.cyanBright(
+            'See transaction in explorer:',
+            endpoint + '/explorer/transaction/' + Buffer.from(tx.address).toString('hex')
           )
+        )
+        console.log('-----------')
 
-          if (index + 1 == transactions.length) {
-            resolve()
-          } else {
-            await sendTransaction(transactions, index + 1, endpoint)
-            resolve()
-          }
+        if (index + 1 == transactions.length) {
+          resolve()
+        } else {
+          sendTransactions(transactions, index + 1, endpoint)
+            .then(() => resolve())
+            .catch(error => reject(error))
         }
-      }
-    )
-
-    await archethic.sendTransaction(tx, endpoint)
-    console.log(chalk.blue('Waiting transaction validation...'))
+      })
+      .on('error', (context, reason) => reject(reason))
+      .on('timeout', (nbConf) => reject('Transaction fell in timeout'))
+      .on('sent', () => console.log(chalk.blue('Waiting transaction validation...')))
+      .send(tx, endpoint, 75)
   })
 }
 
