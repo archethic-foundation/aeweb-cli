@@ -35,14 +35,40 @@ const builder = {
     demandOption: true, // Required
     type: 'string',
   },
+
+  "ssl-certificate": {
+    describe: 'SSL certificate to link to the website',
+    demandOption: false,
+    type: 'string'
+  },
+  "ssl-key": {
+    describe: 'SSL key to certify the website',
+    demandOption: false,
+    type: 'string'
+  }
 };
 
 const handler = async function (argv) {
   try {
+    
     // Derive address and get last transaction index
     const endpoint = argv.endpoint
     let folderPath = path.normalize(argv.path.endsWith(path.sep) ? argv.path.slice(0, -1) : argv.path)
 
+    // Load ssl files
+    const sslCertificateFile = argv["ssl-certificate"]
+    const sslKeyFile = argv["ssl-key"]
+
+    let sslConfiguration = {}
+
+    if (sslCertificateFile !== undefined) {
+      sslConfiguration.cert = fs.readFileSync(sslCertificateFile, "utf8")
+    }
+
+    if (sslKeyFile !== undefined) {
+      sslConfiguration.key = fs.readFileSync(sslKeyFile, "utf8")
+    }
+    
     const baseSeed = argv.seed
     const baseIndex = await archethic.getTransactionIndex(archethic.deriveAddress(baseSeed, 0), endpoint)
 
@@ -96,7 +122,14 @@ const handler = async function (argv) {
       )
     }
 
-    const refContent = {}
+    let refContent = {}
+
+    if (sslConfiguration.cert !== undefined) {
+      refContent.sslCertificate = sslConfiguration.cert
+
+    }
+
+
     files.sort((a, b) => b.size - a.size)
     // Loop until all files are stored inside a transaction content
     while (files.length > 0) {
@@ -169,8 +202,19 @@ const handler = async function (argv) {
     // Create transaction
     console.log(chalk.blue('Creating transactions and estimating fees ...'))
 
-    const refTx = archethic.newTransactionBuilder('hosting')
+    let refTx = archethic.newTransactionBuilder('hosting')
       .setContent(JSON.stringify(refContent))
+
+    if (sslConfiguration.key !== undefined) {
+      const storageNoncePublicKey = await archethic.getStorageNoncePublicKey(endpoint)
+      const aesKey = archethic.randomSecretKey()
+      const encryptedSecretKey = archethic.ecEncrypt(aesKey, storageNoncePublicKey)
+      const encryptedSslKey = archethic.aesEncrypt(sslConfiguration.key, aesKey)
+
+      refTx.addOwnership(encryptedSslKey, [{ publicKey: storageNoncePublicKey, encryptedSecretKey: encryptedSecretKey }])
+    }
+
+    refTx
       .build(refSeed, refIndex)
       .originSign(originPrivateKey)
 
@@ -225,24 +269,24 @@ const handler = async function (argv) {
     if (ok) {
       console.log(chalk.blue('Sending ' + transactions.length + ' transactions...'))
 
-      await sendTransactions(transactions, 0, endpoint)
-        .then(() => {
-          console.log(
-            chalk.green(
-              (argStats.isDirectory() ? 'Website' : 'File') + ' is deployed at:',
-              endpoint + '/api/web_hosting/' + firstRefAddress + '/'
-            )
-          )
+     await sendTransactions(transactions, 0, endpoint)
+       .then(() => {
+         console.log(
+           chalk.green(
+             (argStats.isDirectory() ? 'Website' : 'File') + ' is deployed at:',
+             endpoint + '/api/web_hosting/' + firstRefAddress + '/'
+           )
+         )
 
-          exit(0)
-        })
-        .catch(error => {
-          console.log(
-            chalk.red('Transaction validation error : ' + error)
-          )
+         exit(0)
+       })
+       .catch(error => {
+         console.log(
+           chalk.red('Transaction validation error : ' + error)
+         )
 
-          exit(1)
-        })
+         exit(1)
+       })
     } else {
       throw 'User aborted website deployment.'
     }
