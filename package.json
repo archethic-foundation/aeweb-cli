@@ -2,11 +2,15 @@
   "name": "aeweb",
   "version": "0.4.3",
   "type": "module",
-  "description": "A cli to deploy websites on top of ArchEthic",
+  "description": "A cli to deploy websites on top of Archethic",
   "bin": {
     "aeweb": "aeweb.js"
   },
   "keywords": [
+    "archethic",
+    "web3",
+    "blockchain",
+    "hosting",
     "cli"
   ],
   "main": "aeweb.js",
