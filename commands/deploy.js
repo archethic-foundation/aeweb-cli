@@ -1,11 +1,14 @@
 import fs from 'fs';
-import archethic from 'archethic';
+import Archethic, { Crypto, Utils } from 'archethic';
 import chalk from 'chalk';
 import path from 'path';
 import yesno from 'yesno';
 import zlib from 'zlib'
 import { exit } from 'process';
 import set from 'lodash/set.js'
+
+const { deriveAddress, aesEncrypt, ecEncrypt, randomSecretKey } = Crypto
+const { originPrivateKey, fromBigInt, uint8ArrayToHex } = Utils
 
 const MAX_CONTENT_SIZE = 3_145_728
 const MAX_FILE_SIZE = MAX_CONTENT_SIZE - 45_728 /* 45_728 represent json tree size */
@@ -53,6 +56,12 @@ const handler = async function (argv) {
     
     // Derive address and get last transaction index
     const endpoint = argv.endpoint
+
+    //Initialize Archethic instance and start connection of the network
+    const archethic = new Archethic(endpoint)
+    console.log(`Connecting to ${endpoint}`)
+    await archethic.connect()
+
     let folderPath = path.normalize(argv.path.endsWith(path.sep) ? argv.path.slice(0, -1) : argv.path)
 
     // Load ssl files
@@ -70,15 +79,16 @@ const handler = async function (argv) {
     }
     
     const baseSeed = argv.seed
-    const baseIndex = await archethic.getTransactionIndex(archethic.deriveAddress(baseSeed, 0), endpoint)
+    const baseAddress = deriveAddress(baseSeed, 0)
+    const baseIndex = await archethic.transaction.getTransactionIndex(baseAddress)
 
     const refSeed = baseSeed + 'aeweb_ref'
-    const firstRefAddress = archethic.deriveAddress(refSeed, 0)
-    const refIndex = await archethic.getTransactionIndex(firstRefAddress, endpoint)
+    const firstRefAddress = deriveAddress(refSeed, 0)
+    const refIndex = await archethic.transaction.getTransactionIndex(firstRefAddress)
 
     const filesSeed = baseSeed + 'aeweb_files'
-    const firstFilesAdress = archethic.deriveAddress(filesSeed, 0)
-    let filesIndex = await archethic.getTransactionIndex(firstFilesAdress, endpoint)
+    const firstFilesAdress = deriveAddress(filesSeed, 0)
+    let filesIndex = await archethic.transaction.getTransactionIndex(firstFilesAdress)
 
     // Convert directory structure into array of file content
     console.log(chalk.blue('Creating file structure and compress content...'))
@@ -98,43 +108,41 @@ const handler = async function (argv) {
         throw { message: 'Folder ' + folderPath + ' is empty' }
       }
     } catch (e) {
-      throw e.message
+      throw e
     }
 
     // Control size of json content
     console.log(chalk.blue('Spliting file(s) content in multiple transaction if necessary, it may take a while... ...'))
 
-    const originPrivateKey = archethic.getOriginKey()
     let transactions = []
 
     const buildTx = (index, content) => {
       transactions.push(
         new Promise(async (resolve, reject) => {
-          const tx = archethic.newTransactionBuilder('hosting')
+          const tx = archethic.transaction.new()
+            .setType('hosting')
             .setContent(JSON.stringify(content))
             .build(filesSeed, index)
             .originSign(originPrivateKey)
 
-          const fee = (await archethic.getTransactionFee(tx, endpoint)).fee
+          const { fee }  = await archethic.transaction.getTransactionFee(tx)
 
           resolve({ tx, fee })
         })
       )
     }
 
-    let refContent = {}
+    const refContent = {}
 
     if (sslConfiguration.cert !== undefined) {
       refContent.sslCertificate = sslConfiguration.cert
-
     }
-
 
     files.sort((a, b) => b.size - a.size)
     // Loop until all files are stored inside a transaction content
     while (files.length > 0) {
       // Get next tx address
-      let txAddress = archethic.deriveAddress(filesSeed, filesIndex + 1)
+      let txAddress = deriveAddress(filesSeed, filesIndex + 1)
 
       let txContent = {}
       let txContentSize = 0
@@ -168,7 +176,7 @@ const handler = async function (argv) {
             // Set the value in txContent
             set(txContent, tab_path, part)
             // Update refContent to refer value at txAddress
-            refFileContent.address.push(txAddress)
+            refFileContent.address.push(uint8ArrayToHex(txAddress))
             set(refContent, tab_path, refFileContent)
             // Set the new size of the file
             file.size -= MAX_FILE_SIZE
@@ -176,14 +184,14 @@ const handler = async function (argv) {
             buildTx(filesIndex, txContent)
             // Increment filesIndex for next transaction
             filesIndex++
-            txAddress = archethic.deriveAddress(filesSeed, filesIndex + 1)
+            txAddress = deriveAddress(filesSeed, filesIndex + 1)
             txContent = {}
           }
 
           // Set the value in txContent
           set(txContent, tab_path, content)
           // Update refContent to refer value at txAddress
-          refFileContent.address.push(txAddress)
+          refFileContent.address.push(uint8ArrayToHex(txAddress))
           set(refContent, tab_path, refFileContent)
           // Remove file from files
           files.splice(files.indexOf(file), 1)
@@ -202,14 +210,15 @@ const handler = async function (argv) {
     // Create transaction
     console.log(chalk.blue('Creating transactions and estimating fees ...'))
 
-    let refTx = archethic.newTransactionBuilder('hosting')
+    const refTx = archethic.transaction.new()
+      .setType('hosting')
       .setContent(JSON.stringify(refContent))
 
     if (sslConfiguration.key !== undefined) {
-      const storageNoncePublicKey = await archethic.getStorageNoncePublicKey(endpoint)
-      const aesKey = archethic.randomSecretKey()
-      const encryptedSecretKey = archethic.ecEncrypt(aesKey, storageNoncePublicKey)
-      const encryptedSslKey = archethic.aesEncrypt(sslConfiguration.key, aesKey)
+      const storageNoncePublicKey = await archethic.network.getStorageNoncePublicKey()
+      const aesKey = randomSecretKey()
+      const encryptedSecretKey = ecEncrypt(aesKey, storageNoncePublicKey)
+      const encryptedSslKey = aesEncrypt(sslConfiguration.key, aesKey)
 
       refTx.addOwnership(encryptedSslKey, [{ publicKey: storageNoncePublicKey, encryptedSecretKey: encryptedSecretKey }])
     }
@@ -223,7 +232,7 @@ const handler = async function (argv) {
     // Estimate refTx fees
     const slippage = 1.01
 
-    const { fee: fee, rates: rates } = await archethic.getTransactionFee(refTx, endpoint)
+    const { fee: fee, rates: rates } = await archethic.transaction.getTransactionFee(refTx)
     const refTxFees = Math.ceil(fee * slippage)
 
     let filesTxFees = 0
@@ -236,19 +245,20 @@ const handler = async function (argv) {
     filesTxFees = Math.ceil(filesTxFees * slippage)
 
     // Create transfer transactions
-    const transferTx = archethic.newTransactionBuilder('transfer')
-      .addUCOTransfer(firstRefAddress, archethic.fromBigInt(refTxFees))
-      .addUCOTransfer(firstFilesAdress, archethic.fromBigInt(filesTxFees))
+    const transferTx = archethic.transaction.new()
+      .setType("transfer")
+      .addUCOTransfer(firstRefAddress, fromBigInt(refTxFees))
+      .addUCOTransfer(firstFilesAdress, fromBigInt(filesTxFees))
       .build(baseSeed, baseIndex)
       .originSign(originPrivateKey)
 
     let fees = refTxFees + filesTxFees
-    fees += (await archethic.getTransactionFee(transferTx, endpoint)).fee
+    fees += (await archethic.transaction.getTransactionFee(transferTx)).fee
 
     transactions.unshift(transferTx)
     transactions.push(refTx)
 
-    fees = archethic.fromBigInt(fees)
+    fees = fromBigInt(fees)
 
     console.log(chalk.yellowBright(
       'Total Fee Requirement would be : ' +
@@ -274,7 +284,7 @@ const handler = async function (argv) {
          console.log(
            chalk.green(
              (argStats.isDirectory() ? 'Website' : 'File') + ' is deployed at:',
-             endpoint + '/api/web_hosting/' + firstRefAddress + '/'
+             endpoint + '/api/web_hosting/' + uint8ArrayToHex(firstRefAddress) + '/'
            )
          )
 
@@ -324,13 +334,13 @@ async function sendTransactions(transactions, index, endpoint) {
     console.log(chalk.blue('Transaction ' + (index + 1) + '...'))
     const tx = transactions[index]
 
-    archethic.newTransactionSender()
+    tx
       .on('requiredConfirmation', async (nbConf) => {
         console.log(chalk.blue('Transaction confirmed !'))
         console.log(
           chalk.cyanBright(
             'See transaction in explorer:',
-            endpoint + '/explorer/transaction/' + Buffer.from(tx.address).toString('hex')
+            endpoint + '/explorer/transaction/' + uint8ArrayToHex(tx.address)
           )
         )
         console.log('-----------')
@@ -346,7 +356,7 @@ async function sendTransactions(transactions, index, endpoint) {
       .on('error', (context, reason) => reject(reason))
       .on('timeout', (nbConf) => reject('Transaction fell in timeout'))
       .on('sent', () => console.log(chalk.blue('Waiting transaction validation...')))
-      .send(tx, endpoint, 75)
+      .send(75)
   })
 }
 

@@ -1,4 +1,4 @@
-import archethic from 'archethic'
+import { Crypto, Utils } from 'archethic'
 import chalk from 'chalk'
 
 const command = 'generate-address'
@@ -19,8 +19,8 @@ const builder = {
 }
 
 const handler = function (argv) {
-  const address = archethic.deriveAddress(argv.seed, argv.index)
-  console.log(chalk.blue(address))
+  const address = Crypto.deriveAddress(argv.seed, argv.index)
+  console.log(chalk.blue(Utils.uint8ArrayToHex(address)))
   console.log(chalk.green("If you are using testnet go to https://testnet.archethic.net/faucet & add some funds to the generated address, otherwise transfer funds from your UCO wallet (in Mainnet)"))
 }
 
