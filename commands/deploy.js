@@ -233,7 +233,7 @@ const handler = async function (argv) {
     const slippage = 1.01
 
     const { fee: fee, rates: rates } = await archethic.transaction.getTransactionFee(refTx)
-    const refTxFees = Math.ceil(fee * slippage)
+    const refTxFees = Math.trunc(fee * slippage)
 
     let filesTxFees = 0
 
@@ -242,13 +242,13 @@ const handler = async function (argv) {
       return elt.tx
     })
 
-    filesTxFees = Math.ceil(filesTxFees * slippage)
+    filesTxFees = Math.trunc(filesTxFees * slippage)
 
     // Create transfer transactions
     const transferTx = archethic.transaction.new()
       .setType("transfer")
-      .addUCOTransfer(firstRefAddress, fromBigInt(refTxFees))
-      .addUCOTransfer(firstFilesAdress, fromBigInt(filesTxFees))
+      .addUCOTransfer(firstRefAddress, refTxFees)
+      .addUCOTransfer(firstFilesAdress, filesTxFees)
       .build(baseSeed, baseIndex)
       .originSign(originPrivateKey)
 
