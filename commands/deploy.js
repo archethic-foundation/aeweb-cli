@@ -3,8 +3,8 @@ import Archethic, { Crypto, Utils } from 'archethic'
 import chalk from 'chalk';
 import yesno from 'yesno';
 import { exit } from 'process';
-import * as cli from '../cli.js'
-import AEWeb from '../api.js';
+import * as cli from './cli.js'
+import AEWeb from '../lib/api.js';
 
 const { deriveAddress } = Crypto
 const { originPrivateKey, fromBigInt, uint8ArrayToHex } = Utils
