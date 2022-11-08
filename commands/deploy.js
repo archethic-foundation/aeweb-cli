@@ -1,17 +1,13 @@
-import fs from 'fs';
-import Archethic, { Crypto, Utils } from 'archethic';
+
+import Archethic, { Crypto, Utils } from 'archethic'
 import chalk from 'chalk';
-import path from 'path';
 import yesno from 'yesno';
-import zlib from 'zlib'
 import { exit } from 'process';
-import set from 'lodash/set.js'
+import * as cli from './cli.js'
+import AEWeb from '../lib/api.js';
 
-const { deriveAddress, aesEncrypt, ecEncrypt, randomSecretKey } = Crypto
+const { deriveAddress } = Crypto
 const { originPrivateKey, fromBigInt, uint8ArrayToHex } = Utils
-
-const MAX_CONTENT_SIZE = 3_145_728
-const MAX_FILE_SIZE = MAX_CONTENT_SIZE - 45_728 /* 45_728 represent json tree size */
 
 const command = 'deploy';
 
@@ -53,250 +49,108 @@ const builder = {
 
 const handler = async function (argv) {
   try {
-    
-    // Derive address and get last transaction index
+    // Get ssl configuration
+    const {
+      sslCertificate,
+      sslKey
+    } = cli.loadSSL(argv['ssl-certificate'], argv['ssl-key'])
+
+    const folderPath = cli.normalizeFolderPath(argv.path)
+
+    // Get seeds
+    const baseSeed = argv.seed
+    const { refSeed, filesSeed } = cli.getSeeds(baseSeed)
+
+    // Get genesis addresses
+    const baseAddress = deriveAddress(baseSeed, 0)
+    const refAddress = deriveAddress(refSeed, 0)
+    const filesAddress = deriveAddress(filesSeed, 0)
+
+    // Initialize endpoint connection
     const endpoint = argv.endpoint
 
-    //Initialize Archethic instance and start connection of the network
-    const archethic = new Archethic(endpoint)
     console.log(`Connecting to ${endpoint}`)
-    await archethic.connect()
 
-    let folderPath = path.normalize(argv.path.endsWith(path.sep) ? argv.path.slice(0, -1) : argv.path)
+    const archethic = await new Archethic(endpoint).connect()
 
-    // Load ssl files
-    const sslCertificateFile = argv["ssl-certificate"]
-    const sslKeyFile = argv["ssl-key"]
-
-    let sslConfiguration = {}
-
-    if (sslCertificateFile !== undefined) {
-      sslConfiguration.cert = fs.readFileSync(sslCertificateFile, "utf8")
-    }
-
-    if (sslKeyFile !== undefined) {
-      sslConfiguration.key = fs.readFileSync(sslKeyFile, "utf8")
-    }
-    
-    const baseSeed = argv.seed
-    const baseAddress = deriveAddress(baseSeed, 0)
+    // Get indexes
     const baseIndex = await archethic.transaction.getTransactionIndex(baseAddress)
-
-    const refSeed = baseSeed + 'aeweb_ref'
-    const firstRefAddress = deriveAddress(refSeed, 0)
-    const refIndex = await archethic.transaction.getTransactionIndex(firstRefAddress)
-
-    const filesSeed = baseSeed + 'aeweb_files'
-    const firstFilesAdress = deriveAddress(filesSeed, 0)
-    let filesIndex = await archethic.transaction.getTransactionIndex(firstFilesAdress)
+    const refIndex = await archethic.transaction.getTransactionIndex(refAddress)
+    let filesIndex = await archethic.transaction.getTransactionIndex(filesAddress)
 
     // Convert directory structure into array of file content
     console.log(chalk.blue('Creating file structure and compress content...'))
 
-    let argStats
-    const files = []
-    try {
-      argStats = fs.statSync(folderPath)
-      if (argStats.isDirectory()) {
-        handleDirectory(folderPath, files)
-      } else {
-        handleFile(folderPath, files)
-        folderPath = path.dirname(folderPath)
-      }
+    const aeweb = new AEWeb(archethic)
+    const files = cli.getFiles(folderPath)
 
-      if (files.length === 0) {
-        throw { message: 'Folder ' + folderPath + ' is empty' }
-      }
-    } catch (e) {
-      throw e
-    }
+    if (files.length === 0) throw 'folder "' + path.basename(folderPath) + '" is empty'
 
-    // Control size of json content
-    console.log(chalk.blue('Spliting file(s) content in multiple transaction if necessary, it may take a while... ...'))
-
-    let transactions = []
-
-    const buildTx = (index, content) => {
-      transactions.push(
-        new Promise(async (resolve, reject) => {
-          const tx = archethic.transaction.new()
-            .setType('hosting')
-            .setContent(JSON.stringify(content))
-            .build(filesSeed, index)
-            .originSign(originPrivateKey)
-
-          const { fee }  = await archethic.transaction.getTransactionFee(tx)
-
-          resolve({ tx, fee })
-        })
-      )
-    }
-
-    const refContent = {}
-
-    if (sslConfiguration.cert !== undefined) {
-      refContent.sslCertificate = sslConfiguration.cert
-    }
-
-    files.sort((a, b) => b.size - a.size)
-    // Loop until all files are stored inside a transaction content
-    while (files.length > 0) {
-      // Get next tx address
-      let txAddress = deriveAddress(filesSeed, filesIndex + 1)
-
-      let txContent = {}
-      let txContentSize = 0
-      let file = {}
-      // Loop over files to create a content of Max size
-      // Create a transaction when there is no more file to fill the current tx content
-      while (file) {
-        // Take the first file that can fill the content or the first file if content is empty
-        file = txContentSize == 0 ? (
-          files[0]
-        ) : (
-          files.find(elt => (txContentSize + elt.size) <= MAX_FILE_SIZE)
-        )
-
-        if (file) {
-          // Create json file path
-          const tab_path = file.path.replace(folderPath, '').split(path.sep)
-          if (tab_path[0] === '') { tab_path.shift() }
-          let content = file.content
-          const refFileContent = {
-            encodage: file.encodage,
-            address: []
-          }
-
-          // Handle file over than Max size. The file is splited in multiple transactions,
-          // firsts parts take a full transaction, the last part follow the normal sized file construction
-          while (content.length > MAX_FILE_SIZE) {
-            // Split the file
-            const part = content.slice(0, MAX_FILE_SIZE)
-            content = content.replace(part, '')
-            // Set the value in txContent
-            set(txContent, tab_path, part)
-            // Update refContent to refer value at txAddress
-            refFileContent.address.push(uint8ArrayToHex(txAddress))
-            set(refContent, tab_path, refFileContent)
-            // Set the new size of the file
-            file.size -= MAX_FILE_SIZE
-            // Create new transaction
-            buildTx(filesIndex, txContent)
-            // Increment filesIndex for next transaction
-            filesIndex++
-            txAddress = deriveAddress(filesSeed, filesIndex + 1)
-            txContent = {}
-          }
-
-          // Set the value in txContent
-          set(txContent, tab_path, content)
-          // Update refContent to refer value at txAddress
-          refFileContent.address.push(uint8ArrayToHex(txAddress))
-          set(refContent, tab_path, refFileContent)
-          // Remove file from files
-          files.splice(files.indexOf(file), 1)
-          // Set the new size of txContent
-          txContentSize += file.size
-        }
-      }
-
-      // Create new transaction
-      buildTx(filesIndex, txContent)
-
-      // Increment filesIndex for next transaction
-      filesIndex++
-    }
+    files.forEach(({ path, data }) => aeweb.addFile(path, data))
 
     // Create transaction
-    console.log(chalk.blue('Creating transactions and estimating fees ...'))
+    console.log(chalk.blue('Creating transactions ...'))
 
-    const refTx = archethic.transaction.new()
-      .setType('hosting')
-      .setContent(JSON.stringify(refContent))
+    let transactions = aeweb.getFilesTransactions()
 
-    if (sslConfiguration.key !== undefined) {
-      const storageNoncePublicKey = await archethic.network.getStorageNoncePublicKey()
-      const aesKey = randomSecretKey()
-      const encryptedSecretKey = ecEncrypt(aesKey, storageNoncePublicKey)
-      const encryptedSslKey = aesEncrypt(sslConfiguration.key, aesKey)
-
-      refTx.addOwnership(encryptedSslKey, [{ publicKey: storageNoncePublicKey, encryptedSecretKey: encryptedSecretKey }])
-    }
-
-    refTx
-      .build(refSeed, refIndex)
-      .originSign(originPrivateKey)
-
-    transactions = await Promise.all(transactions)
-
-    // Estimate refTx fees
-    const slippage = 1.01
-
-    const { fee: fee, rates: rates } = await archethic.transaction.getTransactionFee(refTx)
-    const refTxFees = Math.trunc(fee * slippage)
-
-    let filesTxFees = 0
-
-    transactions = transactions.map(elt => {
-      filesTxFees += elt.fee
-      return elt.tx
+    // Sign files transactions
+    transactions = transactions.map(tx => {
+      const index = filesIndex
+      filesIndex++
+      return tx.build(filesSeed, index).originSign(originPrivateKey)
     })
 
-    filesTxFees = Math.trunc(filesTxFees * slippage)
+    aeweb.addSSLCertificate(sslCertificate, sslKey)
+    const refTx = await aeweb.getRefTransaction(transactions)
 
-    // Create transfer transactions
-    const transferTx = archethic.transaction.new()
-      .setType("transfer")
-      .addUCOTransfer(firstRefAddress, refTxFees)
-      .addUCOTransfer(firstFilesAdress, filesTxFees)
-      .build(baseSeed, baseIndex)
-      .originSign(originPrivateKey)
+    // Sign ref transaction
+    refTx.build(refSeed, refIndex).originSign(originPrivateKey)
 
-    let fees = refTxFees + filesTxFees
-    fees += (await archethic.transaction.getTransactionFee(transferTx)).fee
-
-    transactions.unshift(transferTx)
     transactions.push(refTx)
 
-    fees = fromBigInt(fees)
+    // Estimate fees
+    console.log(chalk.blue('Estimating fees ...'))
 
-    console.log(chalk.yellowBright(
-      'Total Fee Requirement would be : ' +
-      fees +
-      ' UCO ( $ ' +
-      (rates.usd * fees).toFixed(2) +
-      ' | € ' +
-      (rates.eur * fees).toFixed(2) +
-      '), for ' + transactions.length + ' transactions.'
-    ))
+    const { refTxFees, filesTxFees } = await cli.estimateTxsFees(archethic, transactions)
 
-    const ok = await yesno({
-      question: chalk.yellowBright(
-        'Do you want to continue. (yes/no)'
-      ),
-    });
+    // Create transfer transaction
+    const transferTx = archethic.transaction.new()
+      .setType('transfer')
+      .addUCOTransfer(refAddress, refTxFees)
+      .addUCOTransfer(filesAddress, filesTxFees)
+
+    transferTx.build(baseSeed, baseIndex).originSign(originPrivateKey)
+
+    transactions.unshift(transferTx)
+
+    const { fee, rates } = await archethic.transaction.getTransactionFee(transferTx)
+
+    const fees = fromBigInt(fee + refTxFees + filesTxFees)
+
+    // Ask for fees validation
+    const ok = await validFees(fees, rates, transactions.length)
 
     if (ok) {
       console.log(chalk.blue('Sending ' + transactions.length + ' transactions...'))
 
-     await sendTransactions(transactions, 0, endpoint)
-       .then(() => {
-         console.log(
-           chalk.green(
-             (argStats.isDirectory() ? 'Website' : 'File') + ' is deployed at:',
-             endpoint + '/api/web_hosting/' + uint8ArrayToHex(firstRefAddress) + '/'
-           )
-         )
+      await sendTransactions(transactions, 0, endpoint)
+        .then(() => {
+          console.log(
+            chalk.green(
+              'Website is deployed at:',
+              endpoint + '/api/web_hosting/' + uint8ArrayToHex(refAddress) + '/'
+            )
+          )
 
-         exit(0)
-       })
-       .catch(error => {
-         console.log(
-           chalk.red('Transaction validation error : ' + error)
-         )
+          exit(0)
+        })
+        .catch(error => {
+          console.log(
+            chalk.red('Transaction validation error : ' + error)
+          )
 
-         exit(1)
-       })
+          exit(1)
+        })
     } else {
       throw 'User aborted website deployment.'
     }
@@ -306,27 +160,22 @@ const handler = async function (argv) {
   }
 }
 
-function handleFile(file, files) {
-  const data = fs.readFileSync(file)
-  const content = zlib.gzipSync(data).toString('base64url')
-  files.push({
-    path: file,
-    size: content.length,
-    content,
-    encodage: 'gzip'
+async function validFees(fees, rates, nbTxs) {
+  console.log(chalk.yellowBright(
+    'Total Fee Requirement would be : ' +
+    fees +
+    ' UCO ( $ ' +
+    (rates.usd * fees).toFixed(2) +
+    ' | € ' +
+    (rates.eur * fees).toFixed(2) +
+    '), for ' + nbTxs + ' transactions.'
+  ))
+
+  return await yesno({
+    question: chalk.yellowBright(
+      'Do you want to continue. (yes/no)'
+    ),
   })
-}
-
-function handleDirectory(entry, files) {
-  const stats = fs.statSync(entry)
-
-  if (stats.isDirectory()) {
-    fs.readdirSync(entry).forEach(child => {
-      handleDirectory(entry + path.sep + child, files)
-    });
-  } else {
-    handleFile(entry, files)
-  }
 }
 
 async function sendTransactions(transactions, index, endpoint) {
