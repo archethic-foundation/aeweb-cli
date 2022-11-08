@@ -138,7 +138,7 @@ const handler = async function (argv) {
           console.log(
             chalk.green(
               'Website is deployed at:',
-              endpoint + '/api/web_hosting/' + refAddress + '/'
+              endpoint + '/api/web_hosting/' + uint8ArrayToHex(refAddress) + '/'
             )
           )
 
