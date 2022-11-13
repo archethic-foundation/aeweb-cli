@@ -1,5 +1,7 @@
 import path from 'path'
 import fs from 'fs'
+import ignore from 'ignore'
+import parse from 'parse-gitignore'
 
 export function getSeeds(baseSeed) {
   return {
@@ -26,11 +28,20 @@ export function normalizeFolderPath(folderPath) {
   return path.normalize(folderPath.endsWith(path.sep) ? folderPath.slice(0, -1) : folderPath)
 }
 
-export function getFiles(folderPath) {
-  let files = []
-  if (fs.statSync(folderPath).isDirectory()) {
-    handleDirectory(folderPath, files)
+export function getFiles(folderPath, isGitFolder=false) {
 
+  let files = []
+  let filters = []
+  
+  // if the folder is git folder then we should ignore 
+  // .git and files / folders in gitignore
+  if (isGitFolder){
+    filters = parse(fs.readFileSync('.gitignore'))['patterns'];
+    filters.push('.git/')
+  }
+  
+  if (fs.statSync(folderPath).isDirectory()) {
+    handleDirectory(folderPath, files, filters)
     files = files.map(file => {
       file.path = file.path.replace(folderPath, '')
       return file
@@ -66,13 +77,17 @@ export async function estimateTxsFees(archethic, transactions) {
   return { refTxFees, filesTxFees }
 }
 
-function handleDirectory(entry, files) {
+function handleDirectory(entry, files, filters ) {
+  const gitignore = ignore().add(filters)
   if (fs.statSync(entry).isDirectory()) {
     fs.readdirSync(entry).forEach(child => {
-      handleDirectory(entry + path.sep + child, files)
+      handleDirectory(entry + path.sep + child, files, filters)
     });
   } else {
-    handleFile(entry, files)
+    // check if file's pattern corresponds to gitignore patterns
+    if(!gitignore.ignores(path.join(entry))){
+      handleFile(entry, files);
+    }
   }
 }
 
