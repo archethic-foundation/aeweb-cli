@@ -36,7 +36,11 @@ export function getFiles(folderPath, isGitFolder=false) {
   // if the folder is git folder then we should ignore 
   // .git and files / folders in gitignore
   if (isGitFolder){
-    filters = parse(fs.readFileSync('.gitignore'))['patterns'];
+    
+    if (fs.existsSync('.gitignore')) {
+      filters = parse(fs.readFileSync('.gitignore'))['patterns'];
+    } 
+    
     filters.push('.git/')
   }
   
