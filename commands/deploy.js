@@ -5,6 +5,7 @@ import yesno from 'yesno';
 import { exit } from 'process';
 import * as cli from './cli.js'
 import AEWeb from '../lib/api.js';
+import path from 'path'
 
 const { deriveAddress } = Crypto
 const { originPrivateKey, fromBigInt, uint8ArrayToHex } = Utils
