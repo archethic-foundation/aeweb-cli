@@ -1,5 +1,9 @@
 import path from 'path'
 import fs from 'fs'
+import Crypto from 'crypto'
+
+// HASH_FUNCTION this must retrieved from the archethic libjs
+const HASH_FUNCTION = 'sha-1'
 
 export function getSeeds(baseSeed) {
   return {
@@ -7,6 +11,7 @@ export function getSeeds(baseSeed) {
     filesSeed: baseSeed + 'aeweb_files'
   }
 }
+
 
 export function loadSSL(sslCertificateFile, sslKeyFile) {
   const sslConfiguration = {}
@@ -24,24 +29,6 @@ export function loadSSL(sslCertificateFile, sslKeyFile) {
 
 export function normalizeFolderPath(folderPath) {
   return path.normalize(folderPath.endsWith(path.sep) ? folderPath.slice(0, -1) : folderPath)
-}
-
-export function getFiles(folderPath) {
-  let files = []
-  if (fs.statSync(folderPath).isDirectory()) {
-    handleDirectory(folderPath, files)
-
-    files = files.map(file => {
-      file.path = file.path.replace(folderPath, '')
-      return file
-    })
-  } else {
-    const data = fs.readFileSync(folderPath)
-    const path = path.basename(folderPath)
-    files.push({ path, data })
-  }
-
-  return files
 }
 
 export async function estimateTxsFees(archethic, transactions) {
@@ -66,6 +53,21 @@ export async function estimateTxsFees(archethic, transactions) {
   return { refTxFees, filesTxFees }
 }
 
+export function getFiles(folderPath) {
+  let files = []
+  if (fs.statSync(folderPath).isDirectory()) {
+    handleDirectory(folderPath, files)
+
+    files = files.map(file => {
+      file.path = file.path.replace(folderPath, '')
+      return file
+    })
+  } else {
+    handleFile(path.basename(folderPath), files);
+  }
+  return files
+}
+
 function handleDirectory(entry, files) {
   if (fs.statSync(entry).isDirectory()) {
     fs.readdirSync(entry).forEach(child => {
@@ -78,5 +80,7 @@ function handleDirectory(entry, files) {
 
 function handleFile(path, files) {
   const data = fs.readFileSync(path)
-  files.push({ path, data })
+  const size = Math.floor(Buffer.byteLength(data) / 1024);
+  const hash = Crypto.createHash(HASH_FUNCTION).update(data).digest('hex');
+  files.push({ path, data, hash, size });
 }
