@@ -80,7 +80,7 @@ function handleDirectory(entry, files) {
 
 function handleFile(path, files) {
   const data = fs.readFileSync(path)
-  const size = Math.floor(Buffer.byteLength(data) / 1024);
+  const size = Math.ceil(Buffer.byteLength(data) / 1024);
   const hash = Crypto.createHash(HASH_FUNCTION).update(data).digest('hex');
   files.push({ path, data, hash, size });
 }
