@@ -99,3 +99,12 @@ function handleFile(path, files) {
   const data = fs.readFileSync(path)
   files.push({ path, data })
 }
+
+function getAbsolutePath(entryPath) {
+  var absolutePath = path.join(entryPath)
+
+  if (absolutePath.startsWith(`..${path.sep}`)) return absolutePath.substr(3)
+  if (absolutePath.startsWith(`${path.sep}`)) return absolutePath.substr(1)
+
+  return absolutePath;
+}
