@@ -89,7 +89,8 @@ function handleDirectory(entry, files, filters ) {
     });
   } else {
     // check if file's pattern corresponds to gitignore patterns
-    if(!gitignore.ignores(path.join(entry))){
+    const absolutePath = getAbsolutePath(entry)
+    if(!gitignore.ignores(absolutePath)){
       handleFile(entry, files);
     }
   }
