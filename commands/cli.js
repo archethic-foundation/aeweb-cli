@@ -38,7 +38,7 @@ export function getFiles(folderPath) {
   } else {
     const data = fs.readFileSync(folderPath)
     const filePath = path.basename(folderPath)
-    files.push({ path, data })
+    files.push({ filePath, data })
   }
 
   return files
@@ -76,7 +76,7 @@ function handleDirectory(entry, files) {
   }
 }
 
-function handleFile(path, files) {
+function handleFile(filePath, files) {
   const data = fs.readFileSync(path)
-  files.push({ path, data })
+  files.push({ filePath, data })
 }

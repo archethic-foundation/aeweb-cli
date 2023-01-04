@@ -48,7 +48,7 @@ const builder = {
   }
 };
 
-const handler = async function (argv) {
+const handler = async function(argv) {
   try {
     // Get ssl configuration
     const {
@@ -87,7 +87,7 @@ const handler = async function (argv) {
 
     if (files.length === 0) throw 'folder "' + path.basename(folderPath) + '" is empty'
 
-    files.forEach(({ path, data }) => aeweb.addFile(path, data))
+    files.forEach(({ filePath, data }) => aeweb.addFile(filePath, data))
 
     // Create transaction
     console.log(chalk.blue('Creating transactions ...'))
