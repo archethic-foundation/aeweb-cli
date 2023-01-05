@@ -32,7 +32,7 @@ export function getFiles(folderPath) {
     handleDirectory(folderPath, files)
 
     files = files.map(file => {
-      file.path = file.path.replace(folderPath, '')
+      file.filePath = file.filePath.replace(folderPath, '')
       return file
     })
   } else {
@@ -77,6 +77,6 @@ function handleDirectory(entry, files) {
 }
 
 function handleFile(filePath, files) {
-  const data = fs.readFileSync(path)
+  const data = fs.readFileSync(filePath)
   files.push({ filePath, data })
 }
