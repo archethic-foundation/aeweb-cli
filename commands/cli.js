@@ -28,20 +28,16 @@ export function normalizeFolderPath(folderPath) {
   return path.normalize(folderPath.endsWith(path.sep) ? folderPath.slice(0, -1) : folderPath)
 }
 
-export function getFiles(folderPath, isGitFolder=false) {
+export function getFiles(folderPath, includeGitIgnoredFiles=false) {
 
   let files = []
-  let filters = []
+  let filters = ['.git/']
   
-  // if the folder is git folder then we should ignore 
-  // .git and files / folders in gitignore
-  if (isGitFolder){
-    
+  // if we don't want to include git ignored files, we add filters
+  if (!includeGitIgnoredFiles){
     if (fs.existsSync('.gitignore')) {
-      filters = parse(fs.readFileSync('.gitignore'))['patterns'];
+      filters.push(...parse(fs.readFileSync('.gitignore'))['patterns']);
     } 
-    
-    filters.push('.git/')
   }
   
   if (fs.statSync(folderPath).isDirectory()) {
