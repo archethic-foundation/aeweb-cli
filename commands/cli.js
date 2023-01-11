@@ -43,13 +43,13 @@ export function getFiles(folderPath, includeGitIgnoredFiles=false) {
   if (fs.statSync(folderPath).isDirectory()) {
     handleDirectory(folderPath, files, filters)
     files = files.map(file => {
-      file.path = file.path.replace(folderPath, '')
+      file.filePath = file.filePath.replace(folderPath, '')
       return file
     })
   } else {
     const data = fs.readFileSync(folderPath)
-    const path = path.basename(folderPath)
-    files.push({ path, data })
+    const filePath = path.basename(folderPath)
+    files.push({ filePath, data })
   }
 
   return files
@@ -92,16 +92,7 @@ function handleDirectory(entry, files, filters ) {
   }
 }
 
-function handleFile(path, files) {
-  const data = fs.readFileSync(path)
-  files.push({ path, data })
-}
-
-function getAbsolutePath(entryPath) {
-  var absolutePath = path.join(entryPath)
-
-  if (absolutePath.startsWith(`..${path.sep}`)) return absolutePath.substr(3)
-  if (absolutePath.startsWith(`${path.sep}`)) return absolutePath.substr(1)
-
-  return absolutePath;
+function handleFile(filePath, files) {
+  const data = fs.readFileSync(filePath)
+  files.push({ filePath, data })
 }
