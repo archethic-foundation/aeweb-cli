@@ -28,33 +28,6 @@ export function normalizeFolderPath(folderPath) {
   return path.normalize(folderPath.endsWith(path.sep) ? folderPath.slice(0, -1) : folderPath)
 }
 
-export function getFiles(folderPath, includeGitIgnoredFiles=false) {
-
-  let files = []
-  let filters = ['.git/']
-  
-  // if we don't want to include git ignored files, we add filters
-  if (!includeGitIgnoredFiles){
-    if (fs.existsSync('.gitignore')) {
-      filters.push(...parse(fs.readFileSync('.gitignore'))['patterns']);
-    } 
-  }
-  
-  if (fs.statSync(folderPath).isDirectory()) {
-    handleDirectory(folderPath, files, filters)
-    files = files.map(file => {
-      file.filePath = file.filePath.replace(folderPath, '')
-      return file
-    })
-  } else {
-    const data = fs.readFileSync(folderPath)
-    const filePath = path.basename(folderPath)
-    files.push({ filePath, data })
-  }
-
-  return files
-}
-
 export async function estimateTxsFees(archethic, transactions) {
   const slippage = 1.01
 
@@ -77,7 +50,35 @@ export async function estimateTxsFees(archethic, transactions) {
   return { refTxFees, filesTxFees }
 }
 
-function handleDirectory(entry, files, filters ) {
+
+export function getFiles(folderPath, includeGitIgnoredFiles = false) {
+
+  let files = []
+  let filters = ['.git/']
+  // if we don't want to include git ignored files, we add filters
+  if (!includeGitIgnoredFiles){
+    if (fs.existsSync('.gitignore')) {
+      filters.push(...parse(fs.readFileSync('.gitignore'))['patterns']);
+    } 
+  }
+  
+  if (fs.statSync(folderPath).isDirectory()) {
+    handleDirectory(folderPath, files, filters)
+    files = files.map(file => {
+      file.filePath = file.filePath.replace(folderPath, '')
+      return file
+    })
+  } else {
+    const data = fs.readFileSync(folderPath)
+    const filePath = path.basename(folderPath)
+    files.push({ filePath, data })
+  }
+
+  return files
+}
+
+
+function handleDirectory(entry, files, filters) {
   const gitignore = ignore().add(filters)
   if (fs.statSync(entry).isDirectory()) {
     fs.readdirSync(entry).forEach(child => {
