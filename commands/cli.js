@@ -1,7 +1,8 @@
-import path from 'path'
+import * as PathLib from 'path'
 import fs from 'fs'
-import ignore from 'ignore'
 import parse from 'parse-gitignore'
+import ignore from 'ignore'
+
 
 export function getSeeds(baseSeed) {
   return {
@@ -25,7 +26,7 @@ export function loadSSL(sslCertificateFile, sslKeyFile) {
 }
 
 export function normalizeFolderPath(folderPath) {
-  return path.normalize(folderPath.endsWith(path.sep) ? folderPath.slice(0, -1) : folderPath)
+  return PathLib.normalize(folderPath.endsWith(PathLib.sep) ? folderPath.slice(0, -1) : folderPath)
 }
 
 export async function estimateTxsFees(archethic, transactions) {
@@ -50,50 +51,57 @@ export async function estimateTxsFees(archethic, transactions) {
   return { refTxFees, filesTxFees }
 }
 
-
 export function getFiles(folderPath, includeGitIgnoredFiles = false) {
-
   let files = []
-  let filters = ['.git/']
-  // if we don't want to include git ignored files, we add filters
-  if (!includeGitIgnoredFiles){
-    if (fs.existsSync('.gitignore')) {
-      filters.push(...parse(fs.readFileSync('.gitignore'))['patterns']);
-    } 
-  }
-  
   if (fs.statSync(folderPath).isDirectory()) {
-    handleDirectory(folderPath, files, filters)
-    files = files.map(file => {
+    handleDirectory(folderPath, files, includeGitIgnoredFiles)
+
+    files = files.map((file) => {
       file.filePath = file.filePath.replace(folderPath, '')
       return file
     })
   } else {
     const data = fs.readFileSync(folderPath)
-    const filePath = path.basename(folderPath)
-    files.push({ filePath, data })
+    const file_path = PathLib.basename(folderPath)
+    files.push({ "filePath": file_path, data })
   }
 
   return files
 }
 
+function handleDirectory(entry, files, includeGitIgnoredFiles) {
+  let filters = []
 
-function handleDirectory(entry, files, filters) {
-  const gitignore = ignore().add(filters)
-  if (fs.statSync(entry).isDirectory()) {
-    fs.readdirSync(entry).forEach(child => {
-      handleDirectory(entry + path.sep + child, files, filters)
-    });
+  if (!includeGitIgnoredFiles) {
+    let gitIgnoreFilePath = PathLib.join(entry, '.gitignore')
+    console.log(gitIgnoreFilePath)
+
+    if (fs.existsSync(gitIgnoreFilePath)) {
+      filters = parse(fs.readFileSync(gitIgnoreFilePath))['patterns']
+    }
+  }
+  filters.unshift('.git')
+
+  const isGitIgnored = ignore().add(filters)
+  doHandleDirectory(entry, files, isGitIgnored)
+}
+
+function doHandleDirectory(entry, files, isGitIgnored) {
+  // reduce search space by omitting folders at once
+  if (fs.statSync(entry).isDirectory() && !isGitIgnored.ignores(entry)) {
+    fs.readdirSync(entry).forEach((child) => {
+      doHandleDirectory(entry + PathLib.sep + child, files, isGitIgnored)
+    })
   } else {
-    // check if file's pattern corresponds to gitignore patterns
-    const absolutePath = getAbsolutePath(entry)
-    if(!gitignore.ignores(absolutePath)){
-      handleFile(entry, files);
+    if (!isGitIgnored.ignores(entry)) {
+      handleFile(entry, files, isGitIgnored);
     }
   }
 }
 
-function handleFile(filePath, files) {
-  const data = fs.readFileSync(filePath)
-  files.push({ filePath, data })
+function handleFile(file_path, files, isGitIgnored) {
+  if (!isGitIgnored.ignores(file_path)) {
+    const data = fs.readFileSync(file_path)
+    files.push({ "filePath": file_path, data })
+  }
 }
