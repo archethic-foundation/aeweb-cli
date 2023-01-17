@@ -80,6 +80,7 @@ function handleDirectory(entry, files, includeGitIgnoredFiles) {
       filters = parse(fs.readFileSync(gitIgnoreFilePath))['patterns']
     }
   }
+  filters.unshift('.gitignore')
   filters.unshift('.git')
 
   const isGitIgnored = ignore().add(filters)
