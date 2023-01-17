@@ -21,6 +21,7 @@ const builder = {
       'Seed is a string representing the transaction chain entropy to be able to derive and generate the keys for the transactions',
     demandOption: true, // Required
     type: 'string',
+    alias: 's',
   },
 
   endpoint: {
@@ -28,27 +29,31 @@ const builder = {
       'Endpoint is the URL of a welcome node to receive the transaction',
     demandOption: true, // Required
     type: 'string',
+    alias: 'e',
   },
 
   path: {
     describe: 'Path to the folder or the file to deploy',
     demandOption: true, // Required
     type: 'string',
+    alias: 'p',
   },
 
   "ssl-certificate": {
     describe: 'SSL certificate to link to the website',
     demandOption: false,
-    type: 'string'
+    type: 'string',
+    alias: "C"
   },
   "ssl-key": {
     describe: 'SSL key to certify the website',
     demandOption: false,
-    type: 'string'
+    type: 'string',
+    alias: "K"
   }
 };
 
-const handler = async function(argv) {
+const handler = async function (argv) {
   try {
     // Get ssl configuration
     const {
