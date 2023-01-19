@@ -69,11 +69,11 @@ export function getFiles(folderPath, includeGitIgnoredFiles = false) {
   return files
 }
 
-function handleDirectory(entry, files, includeGitIgnoredFiles) {
+function handleDirectory(folderPath, files, includeGitIgnoredFiles) {
   let filters = []
 
   if (!includeGitIgnoredFiles) {
-    let gitIgnoreFilePath = PathLib.join(entry, '.gitignore')
+    let gitIgnoreFilePath = PathLib.join(folderPath, '.gitignore')
     console.log(gitIgnoreFilePath)
 
     if (fs.existsSync(gitIgnoreFilePath)) {
@@ -84,18 +84,18 @@ function handleDirectory(entry, files, includeGitIgnoredFiles) {
   filters.unshift('.git')
 
   const isGitIgnored = ignore().add(filters)
-  doHandleDirectory(entry, files, isGitIgnored)
+  doHandleDirectory(folderPath, files, isGitIgnored)
 }
 
-function doHandleDirectory(entry, files, isGitIgnored) {
+function doHandleDirectory(folderPath, files, isGitIgnored) {
   // reduce search space by omitting folders at once
-  if (fs.statSync(entry).isDirectory() && !isGitIgnored.ignores(entry)) {
-    fs.readdirSync(entry).forEach((child) => {
-      doHandleDirectory(entry + PathLib.sep + child, files, isGitIgnored)
+  if (fs.statSync(folderPath).isDirectory() && !isGitIgnored.ignores(folderPath)) {
+    fs.readdirSync(folderPath).forEach((child) => {
+      doHandleDirectory(folderPath + PathLib.sep + child, files, isGitIgnored)
     })
   } else {
-    if (!isGitIgnored.ignores(entry)) {
-      handleFile(entry, files, isGitIgnored);
+    if (!isGitIgnored.ignores(folderPath)) {
+      handleFile(folderPath, files, isGitIgnored);
     }
   }
 }
