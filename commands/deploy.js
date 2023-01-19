@@ -68,7 +68,10 @@ const handler = async function(argv) {
     const filesAddress = deriveAddress(filesSeed, 0)
 
     // Initialize endpoint connection
-    const endpoint = argv.endpoint
+    // when given endpoint ends with "/" http://192.168.1.8:4000/ results in irregular links
+    // bad link=> http://192.168.1.8:4000//api/web_hosting/address/
+    // bad link=> http://192.168.1.8:4000//explorer/transaction/000
+    const endpoint = new URL(argv.endpoint).origin
 
     console.log(`Connecting to ${endpoint}`)
 
