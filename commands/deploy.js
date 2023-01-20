@@ -38,7 +38,11 @@ const builder = {
     type: 'string',
     alias: 'p',
   },
-
+  "include-git-ignored-files": {
+    describe: 'Upload files referenced in .gitignore',
+    demandOption: false,
+    type: 'boolean',
+  },
   "ssl-certificate": {
     describe: 'SSL certificate to link to the website',
     demandOption: false,
@@ -61,6 +65,10 @@ const handler = async function (argv) {
       sslKey
     } = cli.loadSSL(argv['ssl-certificate'], argv['ssl-key'])
 
+    // Should include git ignored files
+    const includeGitIgnoredFiles = argv['include-git-ignored-files']
+    
+    // Get the path
     const folderPath = cli.normalizeFolderPath(argv.path)
 
     // Get seeds
@@ -73,7 +81,10 @@ const handler = async function (argv) {
     const filesAddress = deriveAddress(filesSeed, 0)
 
     // Initialize endpoint connection
-    const endpoint = argv.endpoint
+    // when given endpoint ends with "/" http://192.168.1.8:4000/ results in irregular links
+    // bad link=> http://192.168.1.8:4000//api/web_hosting/address/
+    // bad link=> http://192.168.1.8:4000//explorer/transaction/000
+    const endpoint = new URL(argv.endpoint).origin
 
     console.log(`Connecting to ${endpoint}`)
 
@@ -88,7 +99,7 @@ const handler = async function (argv) {
     console.log(chalk.blue('Creating file structure and compress content...'))
 
     const aeweb = new AEWeb(archethic)
-    const files = cli.getFiles(folderPath)
+    const files = cli.getFiles(folderPath, includeGitIgnoredFiles)
 
     if (files.length === 0) throw 'folder "' + path.basename(folderPath) + '" is empty'
 
