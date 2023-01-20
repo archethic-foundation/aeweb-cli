@@ -42,6 +42,7 @@ const builder = {
     describe: 'Upload files referenced in .gitignore',
     demandOption: false,
     type: 'boolean',
+    alias: "i"
   },
   "ssl-certificate": {
     describe: 'SSL certificate to link to the website',
@@ -67,7 +68,7 @@ const handler = async function (argv) {
 
     // Should include git ignored files
     const includeGitIgnoredFiles = argv['include-git-ignored-files']
-    
+
     // Get the path
     const folderPath = cli.normalizeFolderPath(argv.path)
 
