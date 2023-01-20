@@ -1,8 +1,7 @@
 import * as PathLib from 'path'
 import fs from 'fs'
 import parse from 'parse-gitignore'
-import ignore from 'ignore'
-
+import glob from 'glob'
 
 export function getSeeds(baseSeed) {
   return {
@@ -33,7 +32,7 @@ export async function estimateTxsFees(archethic, transactions) {
   const slippage = 1.01
 
   let transactionsFees = transactions.map(tx => {
-    return new Promise(async (resolve, reject) => {
+    return new Promise(async (resolve, _reject) => {
       const { fee } = await archethic.transaction.getTransactionFee(tx)
       resolve(fee)
     })
@@ -53,8 +52,9 @@ export async function estimateTxsFees(archethic, transactions) {
 
 export function getFiles(folderPath, includeGitIgnoredFiles = false) {
   let files = []
+  const filters = []
   if (fs.statSync(folderPath).isDirectory()) {
-    handleDirectory(folderPath, files, includeGitIgnoredFiles)
+    handleDirectory(folderPath, files, includeGitIgnoredFiles, filters)
 
     files = files.map((file) => {
       file.filePath = file.filePath.replace(folderPath, '')
@@ -69,40 +69,42 @@ export function getFiles(folderPath, includeGitIgnoredFiles = false) {
   return files
 }
 
-function handleDirectory(folderPath, files, includeGitIgnoredFiles) {
-  let filters = []
-
+function handleDirectory(folderPath, files, includeGitIgnoredFiles, filters) {
   if (!includeGitIgnoredFiles) {
-    let gitIgnoreFilePath = PathLib.join(folderPath, '.gitignore')
-    console.log(gitIgnoreFilePath)
-
-    if (fs.existsSync(gitIgnoreFilePath)) {
-      filters = parse(fs.readFileSync(gitIgnoreFilePath))['patterns']
-    }
+    filters = getFilters(folderPath, filters)
   }
-  filters.unshift('.gitignore')
-  filters.unshift('.git')
 
-  const isGitIgnored = ignore().add(filters)
-  doHandleDirectory(folderPath, files, isGitIgnored)
-}
-
-function doHandleDirectory(folderPath, files, isGitIgnored) {
-  // reduce search space by omitting folders at once
-  if (fs.statSync(folderPath).isDirectory() && !isGitIgnored.ignores(folderPath)) {
-    fs.readdirSync(folderPath).forEach((child) => {
-      doHandleDirectory(folderPath + PathLib.sep + child, files, isGitIgnored)
-    })
-  } else {
-    if (!isGitIgnored.ignores(folderPath)) {
-      handleFile(folderPath, files, isGitIgnored);
+  // Check if files is filtered
+  if (!filters.includes(folderPath)) {
+    // reduce search space by omitting folders at once
+    if (fs.statSync(folderPath).isDirectory()) {
+      fs.readdirSync(folderPath).forEach((child) => {
+        handleDirectory(folderPath + PathLib.sep + child, files, includeGitIgnoredFiles, filters)
+      })
+    } else {
+      handleFile(folderPath, files);
     }
   }
 }
 
-function handleFile(file_path, files, isGitIgnored) {
-  if (!isGitIgnored.ignores(file_path)) {
-    const data = fs.readFileSync(file_path)
-    files.push({ "filePath": file_path, data })
+function handleFile(filePath, files) {
+  const data = fs.readFileSync(filePath)
+  files.push({ filePath, data })
+}
+
+function getFilters(folderPath, filters) {
+  let newFilters = []
+
+  const gitIgnoreFilePath = PathLib.join(folderPath, '.gitignore')
+  if (fs.existsSync(gitIgnoreFilePath)) {
+    console.log('Ignore files from: ' + gitIgnoreFilePath)
+    newFilters = parse(fs.readFileSync(gitIgnoreFilePath))['patterns']
+    newFilters.unshift('.gitignore')
+    newFilters.unshift('.git')
   }
+
+  // Add the new filters to the previous filters
+  return newFilters.reduce((acc, path) => {
+    return acc.concat(glob.sync(PathLib.join(folderPath, path)))
+  }, filters)
 }
