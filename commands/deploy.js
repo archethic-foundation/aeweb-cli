@@ -35,7 +35,11 @@ const builder = {
     demandOption: true, // Required
     type: 'string',
   },
-
+  "include-git-ignored-files": {
+    describe: 'Upload files referenced in .gitignore',
+    demandOption: false,
+    type: 'boolean',
+  },
   "ssl-certificate": {
     describe: 'SSL certificate to link to the website',
     demandOption: false,
@@ -56,6 +60,10 @@ const handler = async function(argv) {
       sslKey
     } = cli.loadSSL(argv['ssl-certificate'], argv['ssl-key'])
 
+    // Should include git ignored files
+    const includeGitIgnoredFiles = argv['include-git-ignored-files']
+    
+    // Get the path
     const folderPath = cli.normalizeFolderPath(argv.path)
 
     // Get seeds
@@ -86,7 +94,7 @@ const handler = async function(argv) {
     console.log(chalk.blue('Creating file structure and compress content...'))
 
     const aeweb = new AEWeb(archethic)
-    const files = cli.getFiles(folderPath)
+    const files = cli.getFiles(folderPath, includeGitIgnoredFiles)
 
     if (files.length === 0) throw 'folder "' + path.basename(folderPath) + '" is empty'
 
