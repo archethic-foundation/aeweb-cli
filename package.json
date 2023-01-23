@@ -37,8 +37,5 @@
     "parse-gitignore": "^2.0.0",
     "yargs": "^17.5.1",
     "yesno": "^0.4.0"
-  },
-  "engines": {
-    "node": ">=17.9.0"
   }
 }
