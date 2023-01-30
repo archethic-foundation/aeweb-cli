@@ -21,6 +21,7 @@ const builder = {
       'Seed is a string representing the transaction chain entropy to be able to derive and generate the keys for the transactions',
     demandOption: true, // Required
     type: 'string',
+    alias: 's',
   },
 
   endpoint: {
@@ -28,31 +29,36 @@ const builder = {
       'Endpoint is the URL of a welcome node to receive the transaction',
     demandOption: true, // Required
     type: 'string',
+    alias: 'e',
   },
 
   path: {
     describe: 'Path to the folder or the file to deploy',
     demandOption: true, // Required
     type: 'string',
+    alias: 'p',
   },
   "include-git-ignored-files": {
     describe: 'Upload files referenced in .gitignore',
     demandOption: false,
     type: 'boolean',
+    alias: "i"
   },
   "ssl-certificate": {
     describe: 'SSL certificate to link to the website',
     demandOption: false,
-    type: 'string'
+    type: 'string',
+    alias: "C"
   },
   "ssl-key": {
     describe: 'SSL key to certify the website',
     demandOption: false,
-    type: 'string'
+    type: 'string',
+    alias: "K"
   }
 };
 
-const handler = async function(argv) {
+const handler = async function (argv) {
   try {
     // Get ssl configuration
     const {
@@ -62,7 +68,7 @@ const handler = async function(argv) {
 
     // Should include git ignored files
     const includeGitIgnoredFiles = argv['include-git-ignored-files']
-    
+
     // Get the path
     const folderPath = cli.normalizeFolderPath(argv.path)
 

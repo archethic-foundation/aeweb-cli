@@ -9,12 +9,14 @@ const builder = {
   seed: {
     describe: 'Seed is a string representing the transaction chain entropy to be able to derive and generate the keys for the transactions',
     demandOption: true, // Required
-    type: 'string'
+    type: 'string',
+    alias: 's'
   },
   index: {
     describe: 'Index is the number of transactions in the chain, to generate the current and the next public key',
     demandOption: true, // Required
-    type: 'number'
+    type: 'number',
+    alias: 'i'
   }
 }
 
