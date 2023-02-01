@@ -5,7 +5,8 @@ import yesno from 'yesno';
 import { exit } from 'process';
 import * as cli from './cli.js'
 import AEWeb from '../lib/api.js';
-import path from 'path'
+import PathLib from 'path'
+import fetch from "cross-fetch"
 
 const { deriveAddress } = Crypto
 const { originPrivateKey, fromBigInt, uint8ArrayToHex } = Utils
@@ -23,7 +24,6 @@ const builder = {
     type: 'string',
     alias: 's',
   },
-
   endpoint: {
     describe:
       'Endpoint is the URL of a welcome node to receive the transaction',
@@ -31,7 +31,6 @@ const builder = {
     type: 'string',
     alias: 'e',
   },
-
   path: {
     describe: 'Path to the folder or the file to deploy',
     demandOption: true, // Required
@@ -60,6 +59,7 @@ const builder = {
 
 const handler = async function (argv) {
   try {
+    var isWebsiteUpdate = false, prevRefTxContent = undefined, transactions = [];
     // Get ssl configuration
     const {
       sslCertificate,
@@ -82,9 +82,6 @@ const handler = async function (argv) {
     const filesAddress = deriveAddress(filesSeed, 0)
 
     // Initialize endpoint connection
-    // when given endpoint ends with "/" http://192.168.1.8:4000/ results in irregular links
-    // bad link=> http://192.168.1.8:4000//api/web_hosting/address/
-    // bad link=> http://192.168.1.8:4000//explorer/transaction/000
     const endpoint = new URL(argv.endpoint).origin
 
     console.log(`Connecting to ${endpoint}`)
@@ -96,34 +93,46 @@ const handler = async function (argv) {
     const refIndex = await archethic.transaction.getTransactionIndex(refAddress)
     let filesIndex = await archethic.transaction.getTransactionIndex(filesAddress)
 
+    // Check if website is already deployed
+    if ((refIndex) !== 0) {
+      isWebsiteUpdate = true;
+      const lastRefTx = await fetchLastRefTx(refAddress, archethic.nearestEndpoints[0]);
+      prevRefTxContent = JSON.parse(lastRefTx.data.content);
+    }
+
     // Convert directory structure into array of file content
     console.log(chalk.blue('Creating file structure and compress content...'))
 
-    const aeweb = new AEWeb(archethic)
+    const aeweb = new AEWeb(archethic, prevRefTxContent)
     const files = cli.getFiles(folderPath, includeGitIgnoredFiles)
 
-    if (files.length === 0) throw 'folder "' + path.basename(folderPath) + '" is empty'
+    if (files.length === 0) throw 'folder "' + PathLib.basename(folderPath) + '" is empty'
 
     files.forEach(({ filePath, data }) => aeweb.addFile(filePath, data))
+
+    if (isWebsiteUpdate) await logUpdateInfo(aeweb)
 
     // Create transaction
     console.log(chalk.blue('Creating transactions ...'))
 
-    let transactions = aeweb.getFilesTransactions()
+    if (!isWebsiteUpdate || (aeweb.listModifiedFiles().length)) {
+      // when files changes does exist
 
-    // Sign files transactions
-    transactions = transactions.map(tx => {
-      const index = filesIndex
-      filesIndex++
-      return tx.build(filesSeed, index).originSign(originPrivateKey)
-    })
+      transactions = aeweb.getFilesTransactions()
+
+      // Sign files transactions
+      transactions = transactions.map(tx => {
+        const index = filesIndex
+        filesIndex++
+        return tx.build(filesSeed, index).originSign(originPrivateKey)
+      })
+    }
 
     aeweb.addSSLCertificate(sslCertificate, sslKey)
-    const refTx = await aeweb.getRefTransaction(transactions)
+    const refTx = await aeweb.getRefTransaction(transactions);
 
     // Sign ref transaction
     refTx.build(refSeed, refIndex).originSign(originPrivateKey)
-
     transactions.push(refTx)
 
     // Estimate fees
@@ -135,7 +144,9 @@ const handler = async function (argv) {
     const transferTx = archethic.transaction.new()
       .setType('transfer')
       .addUCOTransfer(refAddress, refTxFees)
-      .addUCOTransfer(filesAddress, filesTxFees)
+
+    // handle no new files tx, but update to ref tx
+    if (filesTxFees) transferTx.addUCOTransfer(filesAddress, filesTxFees)
 
     transferTx.build(baseSeed, baseIndex).originSign(originPrivateKey)
 
@@ -225,6 +236,89 @@ async function sendTransactions(transactions, index, endpoint) {
       .on('sent', () => console.log(chalk.blue('Waiting transaction validation...')))
       .send(75)
   })
+}
+
+
+async function fetchLastRefTx(txnAddress, endpoint) {
+  if (typeof txnAddress !== "string" && !(txnAddress instanceof Uint8Array)) {
+    throw "'address' must be a string or Uint8Array";
+  }
+
+  if (typeof txnAddress == "string") {
+    if (!isHex(txnAddress)) {
+      throw "'address' must be in hexadecimal form if it's string";
+    }
+  }
+
+  if (txnAddress instanceof Uint8Array) {
+    txnAddress = uint8ArrayToHex(txnAddress);
+  }
+  const url = new URL("/api", endpoint);
+  const query =
+    `query {
+                lastTransaction(
+                    address: "${txnAddress}"
+                    ){
+                        data{
+                                content
+                            }
+                    }
+            }`
+
+  return fetch(url,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body:
+        JSON.stringify({
+          query
+        })
+    })
+    .then(handleResponse)
+    .then(({
+      data: { lastTransaction: data }
+    }) => {
+      return data;
+    })
+}
+
+function handleResponse(response) {
+  return new Promise(function (resolve, reject) {
+    if (response.status >= 200 && response.status <= 299) {
+      response.json().then(resolve);
+    } else {
+      reject(response.statusText);
+    }
+  });
+}
+
+async function logUpdateInfo(aeweb) {
+
+  let modifiedFiles = aeweb.listModifiedFiles();
+  let removedFiles = aeweb.listRemovedFiles();
+
+  if (!modifiedFiles.length && !removedFiles.length) { throw 'No files to update' }
+
+  console.log(
+    chalk.greenBright
+      (`
+            Found ${modifiedFiles.length} New/Modified files 
+            Found ${removedFiles.length} Removed files
+      `));
+
+  if (await yesno({
+    question: chalk.yellowBright('Do you want to List Changes. (yes/no)'
+    ),
+  })) {
+    console.log(chalk.blue('New/Modified files:'))
+    modifiedFiles.forEach((file_path) => { console.log(chalk.green(`     ${file_path}`)) })
+
+    console.log(chalk.blue('Removed files:'))
+    removedFiles.forEach((file_path) => { console.log(chalk.red(`     ${file_path}     `)) })
+  }
 }
 
 export default {
