@@ -6,6 +6,9 @@
   "bin": {
     "aeweb": "aeweb.js"
   },
+  "exports":{
+    "import":"./index.js"
+  },
   "keywords": [
     "archethic",
     "web3",
