@@ -24,6 +24,12 @@ const builder = {
     type: 'string',
     alias: 's',
   },
+  keychainService: {
+    describe:
+      'KeychainService is name of the service in the keychain to use for the key derivations',
+    type: 'string',
+    alias: 'ks',
+  },
   endpoint: {
     describe:
       'Endpoint is the URL of a welcome node to receive the transaction',
@@ -72,14 +78,6 @@ const handler = async function (argv) {
     // Get the path
     const folderPath = cli.normalizeFolderPath(argv.path)
 
-    // Get seeds
-    const baseSeed = argv.seed
-    const { refSeed, filesSeed } = cli.getSeeds(baseSeed)
-
-    // Get genesis addresses
-    const baseAddress = deriveAddress(baseSeed, 0)
-    const refAddress = deriveAddress(refSeed, 0)
-    const filesAddress = deriveAddress(filesSeed, 0)
 
     // Initialize endpoint connection
     const endpoint = new URL(argv.endpoint).origin
@@ -88,6 +86,25 @@ const handler = async function (argv) {
 
     const archethic = await new Archethic(endpoint).connect()
 
+    // Get the base seed
+    let baseSeed = argv.seed
+    if (argv.keychainService) {
+      const keychain = await archethic.account.getKeychain(argv.seed)
+      if (!keychain[argv.keychainService]) {
+        throw `The keychain doesn't include the ${argv.keychainService} service`
+      }
+
+      const { privateKey } = keychain.deriveKeypair(argv.keychainService, 0)
+      baseSeed = privateKey
+    }
+
+    // Get seeds
+    const { refSeed, filesSeed } = cli.getSeeds(baseSeed)
+
+    // Get genesis addresses
+    const baseAddress = deriveAddress(baseSeed, 0)
+    const refAddress = deriveAddress(refSeed, 0)
+    const filesAddress = deriveAddress(filesSeed, 0)
     // Get indexes
     const baseIndex = await archethic.transaction.getTransactionIndex(baseAddress)
     const refIndex = await archethic.transaction.getTransactionIndex(refAddress)
