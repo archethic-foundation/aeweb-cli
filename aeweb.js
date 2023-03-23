@@ -8,7 +8,6 @@ import deploy from './commands/deploy.js'
 
 
 const y = yargs(hideBin(process.argv))
-
 y.command(about).help()
 y.command(generate_address).help()
 y.command(deploy).help()
