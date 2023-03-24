@@ -57,13 +57,13 @@ const builder = {
   }
 };
 
-const handler = async function (argv) {
+const handler = async function(argv) {
   try {
     var isWebsiteUpdate = false, prevRefTxContent = undefined, transactions = [];
     // Get ssl configuration
     const {
-      sslCertificate,
-      sslKey
+      cert: sslCertificate,
+      key: sslKey
     } = cli.loadSSL(argv['ssl-certificate'], argv['ssl-key'])
 
     // Should include git ignored files
@@ -286,7 +286,7 @@ async function fetchLastRefTx(txnAddress, endpoint) {
 }
 
 function handleResponse(response) {
-  return new Promise(function (resolve, reject) {
+  return new Promise(function(resolve, reject) {
     if (response.status >= 200 && response.status <= 299) {
       response.json().then(resolve);
     } else {
