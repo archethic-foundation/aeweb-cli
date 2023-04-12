@@ -41,6 +41,18 @@ To deploy files, folder or website -
 aeweb deploy --seed myseedphrase --endpoint https://testnet.archethic.net --path ./website
 ```
 
+To deploy files, folder or website with a keychain -
+
+- `seed` is a string representing the keychain seed
+- `endpoint` is the URL of a welcome node to receive the transaction
+- `path` is the path of the folder or file you want to deploy
+- `keychain-funding-service` is the service used to fund the transactions
+- `keychain-website-service` is the service used to host the website
+
+```bash
+aeweb deploy --seed myseedphrase --endpoint https://testnet.archethic.net --path ./website --keychain-funding-service "arhcethic-wallet-ALICE" --keychain-website-service website1
+```
+
 To enable SSL certificates and HTTPS websites you can need -
 
 - `ssl-certificate` PEM file of the public certificate for your domain
