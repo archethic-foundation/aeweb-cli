@@ -50,7 +50,7 @@ To deploy files, folder or website with a keychain -
 - `keychain-website-service` is the service used to host the website
 
 ```bash
-aeweb deploy --seed myseedphrase --endpoint https://testnet.archethic.net --path ./website --keychain-funding-service "arhcethic-wallet-ALICE" --keychain-website-service website1
+aeweb deploy --seed myseedphrase --endpoint https://testnet.archethic.net --path ./website --keychain-funding-service "archethic-wallet-ALICE" --keychain-website-service website1
 ```
 
 To enable SSL certificates and HTTPS websites you can need -
