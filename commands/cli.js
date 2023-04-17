@@ -30,8 +30,8 @@ export function loadSSL(sslCertificateFile, sslKeyFile) {
   return sslConfiguration
 }
 
-export function normalizeFolderPath(folderPath, sepearator = PathLib.sep) {
-  return PathLib.normalize(folderPath.endsWith(sepearator) ? folderPath.slice(0, -1) : folderPath)
+export function normalizeFolderPath(folderPath, separator = PathLib.sep) {
+  return PathLib.normalize(folderPath.endsWith(separator) ? folderPath.slice(0, -1) : folderPath)
 }
 
 export async function estimateTxsFees(archethic, transactions) {
