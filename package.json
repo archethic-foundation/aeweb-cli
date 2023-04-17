@@ -1,6 +1,6 @@
 {
   "name": "aeweb",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "type": "module",
   "description": "A cli to deploy websites on top of Archethic",
   "bin": {
@@ -18,7 +18,10 @@
   ],
   "main": "aeweb.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha tests/ --timeout 10000 --recursive ",
+    "watch": "mocha tests/  --timeout 10000 --recursive --watch",
+    "test:coverage": "nyc mocha tests/  --timeout 10000 --recursive",
+    "update": "npx npm-check-updates -u && npm install"
   },
   "repository": {
     "type": "git",
@@ -32,12 +35,19 @@
   "homepage": "https://github.com/archethic-foundation/aeweb-cli#readme",
   "dependencies": {
     "archethic": "^1.15.0",
-    "chalk": "^5.0.1",
+    "chalk": "^5.2.0",
     "figlet": "^1.5.2",
-    "glob": "^8.1.0",
+    "glob": "^9.0.1",
     "lodash": "^4.17.21",
     "parse-gitignore": "^2.0.0",
-    "yargs": "^17.5.1",
+    "yargs": "^17.7.1",
     "yesno": "^0.4.0"
+  },
+  "devDependencies": {
+    "deep-equal-in-any-order": "^2.0.4",
+    "chai": "^4.3.7",
+    "chai-as-promised": "^7.1.1",
+    "mocha": "^10.2.0",
+    "nock": "^13.3.0"
   }
 }
