@@ -13,7 +13,7 @@ It also provide an API to format files content according to Archethic web hostin
 To get the AEWeb CLI, you need NodeJS (latest version) installed. Then you need to install the CLI, using:
 
 ```bash
-npm install aeweb -g
+npm install @archethicjs/aeweb-cli -g
 ```
 
 To check if AEWeb CLI is installed successfully, try :
