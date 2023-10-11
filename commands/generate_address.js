@@ -1,4 +1,4 @@
-import { Crypto, Utils } from 'archethic'
+import { Crypto, Utils } from '@archethicjs/sdk'
 import chalk from 'chalk'
 
 const command = 'generate-address'

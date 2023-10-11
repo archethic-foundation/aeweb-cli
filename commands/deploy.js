@@ -1,5 +1,5 @@
 
-import Archethic, { Crypto, Utils } from 'archethic'
+import Archethic, { Crypto, Utils } from '@archethicjs/sdk'
 import chalk from 'chalk';
 import yesno from 'yesno';
 import { exit } from 'process';
@@ -147,9 +147,10 @@ const handler = async function(argv) {
     let filesIndex = await archethic.transaction.getTransactionIndex(filesAddress)
 
     // Check if website is already deployed
-    if ((refIndex) !== 0) {
+    if (refIndex !== 0) {
+      console.log(archethic.nearestEndpoints)
       isWebsiteUpdate = true;
-      const lastRefTx = await fetchLastRefTx(refAddress, archethic.nearestEndpoints[0]);
+      const lastRefTx = await fetchLastRefTx(refAddress, archethic);
       prevRefTxContent = JSON.parse(lastRefTx.data.content);
     }
 
@@ -159,11 +160,15 @@ const handler = async function(argv) {
     const aeweb = new AEWeb(archethic, prevRefTxContent)
     const files = cli.getFiles(folderPath, includeGitIgnoredFiles)
 
-    if (files.length === 0) throw 'folder "' + PathLib.basename(folderPath) + '" is empty'
+    if (files.length === 0) {
+      throw 'folder "' + PathLib.basename(folderPath) + '" is empty'
+    }
 
     files.forEach(({ filePath, data }) => aeweb.addFile(filePath, data))
 
-    if (isWebsiteUpdate) await logUpdateInfo(aeweb)
+    if (isWebsiteUpdate) {
+      await logUpdateInfo(aeweb)
+    }
 
     // Create transaction
     console.log(chalk.blue('Creating transactions ...'))
@@ -264,21 +269,17 @@ const handler = async function(argv) {
 }
 
 async function validFees(fees, rates, nbTxs) {
-  console.log(chalk.yellowBright(
-    'Total Fee Requirement would be : ' +
-    fees +
-    ' UCO ( $ ' +
-    (rates.usd * fees).toFixed(2) +
-    ' | € ' +
-    (rates.eur * fees).toFixed(2) +
-    '), for ' + nbTxs + ' transactions.'
-  ))
 
-  return await yesno({
+  const feeStatus = `Total Fee Requirement would be: ${fees} UCO ($${(rates.usd * fees).toFixed(2)} | €${(rates.eur * fees).toFixed(2)})`
+  console.log(chalk.yellowBright(feeStatus))
+
+  const confirmation = {
     question: chalk.yellowBright(
       'Do you want to continue. (yes/no)'
     ),
-  })
+  }
+  
+  return await yesno(confirmation)
 }
 
 async function sendTransactions(transactions, index, endpoint) {
@@ -313,7 +314,7 @@ async function sendTransactions(transactions, index, endpoint) {
 }
 
 
-async function fetchLastRefTx(txnAddress, endpoint) {
+async function fetchLastRefTx(txnAddress, archethic) {
   if (typeof txnAddress !== "string" && !(txnAddress instanceof Uint8Array)) {
     throw "'address' must be a string or Uint8Array";
   }
@@ -327,46 +328,24 @@ async function fetchLastRefTx(txnAddress, endpoint) {
   if (txnAddress instanceof Uint8Array) {
     txnAddress = uint8ArrayToHex(txnAddress);
   }
-  const url = new URL("/api", endpoint);
-  const query =
-    `query {
-                lastTransaction(
-                    address: "${txnAddress}"
-                    ){
-                        data{
-                                content
-                            }
-                    }
-            }`
 
-  return fetch(url,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
-      body:
-        JSON.stringify({
-          query
-        })
-    })
-    .then(handleResponse)
-    .then(({
-      data: { lastTransaction: data }
-    }) => {
-      return data;
-    })
-}
+  const query =`
+  query {
+    lastTransaction(
+      address: "${txnAddress}"
+      ){
+        data{
+          content
+        }
+      }
+  }`
 
-function handleResponse(response) {
-  return new Promise(function(resolve, reject) {
-    if (response.status >= 200 && response.status <= 299) {
-      response.json().then(resolve);
-    } else {
-      reject(response.statusText);
-    }
-  });
+  return archethic.network.rawGraphQLQuery(query)
+    .then(r => {
+      if (r.lastTransaction) {
+        return r.lastTransaction
+      } 
+    })
 }
 
 async function logUpdateInfo(aeweb) {
@@ -374,24 +353,24 @@ async function logUpdateInfo(aeweb) {
   let modifiedFiles = aeweb.listModifiedFiles();
   let removedFiles = aeweb.listRemovedFiles();
 
-  if (!modifiedFiles.length && !removedFiles.length) { throw 'No files to update' }
+  if (!modifiedFiles.length && !removedFiles.length) { 
+    throw 'No files to update'
+  }
 
-  console.log(
-    chalk.greenBright
-      (`
-            Found ${modifiedFiles.length} New/Modified files 
-            Found ${removedFiles.length} Removed files
-      `));
+  const udpate_info = `
+    Found ${modifiedFiles.length} New/Modified files 
+    Found ${removedFiles.length} Removed files
+  `
 
-  if (await yesno({
-    question: chalk.yellowBright('Do you want to List Changes. (yes/no)'
-    ),
-  })) {
+  console.log(chalk.greenBright(udpate_info));
+
+  const confirmation_question = { question: chalk.yellowBright('Do you want to List Changes. (yes/no)') }
+  if (await yesno(confirmation_question)) {
     console.log(chalk.blue('New/Modified files:'))
-    modifiedFiles.forEach((file_path) => { console.log(chalk.green(`     ${file_path}`)) })
+    modifiedFiles.forEach((file_path) => { console.log(chalk.green(`    ${file_path}`)) })
 
     console.log(chalk.blue('Removed files:'))
-    removedFiles.forEach((file_path) => { console.log(chalk.red(`     ${file_path}     `)) })
+    removedFiles.forEach((file_path) => { console.log(chalk.red(`    ${file_path}`)) })
   }
 }
 
