@@ -149,9 +149,13 @@ const handler = async function(argv) {
     // Check if website is already deployed
     if (refIndex !== 0) {
       console.log(archethic.nearestEndpoints)
-      isWebsiteUpdate = true;
       const lastRefTx = await fetchLastRefTx(refAddress, archethic);
-      prevRefTxContent = JSON.parse(lastRefTx.data.content);
+      try{
+        prevRefTxContent = JSON.parse(lastRefTx.data.content);
+        isWebsiteUpdate = true;
+      } catch (e){
+        console.warn('No existing transaction found on refAddress for hosting the website. This will be considered as the initial hosting transaction.');
+      }
     }
 
     // Convert directory structure into array of file content
