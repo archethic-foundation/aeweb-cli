@@ -149,12 +149,12 @@ const handler = async function(argv) {
     // Check if website is already deployed
     if (refIndex !== 0) {
       console.log(archethic.nearestEndpoints)
-      const lastRefTx = await fetchLastRefTx(refAddress, archethic);
-      try{
-        prevRefTxContent = JSON.parse(lastRefTx.data.content);
+      const lastHostingTx = await fetchLastHostingTx(refAddress, archethic);
+      if (lastHostingTx) {
+        prevRefTxContent = JSON.parse(lastHostingTx.data.content);
         isWebsiteUpdate = true;
-      } catch (e){
-        console.warn('No existing transaction found on refAddress for hosting the website. This will be considered as the initial hosting transaction.');
+      } else {
+        console.warn('No existing hosting transaction found. This will be considered as the initial hosting transaction.');
       }
     }
 
@@ -317,8 +317,7 @@ async function sendTransactions(transactions, index, endpoint) {
   })
 }
 
-
-async function fetchLastRefTx(txnAddress, archethic) {
+async function fetchLastHostingTx(txnAddress, archethic) {
   if (typeof txnAddress !== "string" && !(txnAddress instanceof Uint8Array)) {
     throw "'address' must be a string or Uint8Array";
   }
@@ -333,23 +332,70 @@ async function fetchLastRefTx(txnAddress, archethic) {
     txnAddress = uint8ArrayToHex(txnAddress);
   }
 
-  const query =`
+  // Requête pour obtenir la dernière transaction
+  const lastTxQuery = `
   query {
     lastTransaction(
       address: "${txnAddress}"
-      ){
-        data{
+      ) {
+        previousAddress
+        type
+        data {
           content
         }
-      }
-  }`
+    }
+  }`;
 
-  return archethic.network.rawGraphQLQuery(query)
-    .then(r => {
-      if (r.lastTransaction) {
-        return r.lastTransaction
-      } 
-    })
+  const lastTxResult = await archethic.network.rawGraphQLQuery(lastTxQuery);
+
+  if (!lastTxResult.lastTransaction) {
+    return null;
+  }
+
+  let txn = lastTxResult.lastTransaction;
+  let lastHostingTx = null;
+
+  console.log(`Current transaction address: ${txnAddress}`);
+  console.log(`Previous transaction address: ${txn.previousAddress}`);
+  console.log(`Transaction type: ${txn.type}`);
+
+  while (txn.previousAddress) {
+    txnAddress = txn.previousAddress;
+
+    // Requête pour obtenir une transaction spécifique
+    const txQuery = `
+    query {
+      transaction(
+        address: "${txnAddress}"
+        ) {
+          previousAddress
+          type
+          data {
+            content
+          }
+      }
+    }`;
+
+    const result = await archethic.network.rawGraphQLQuery(txQuery);
+
+    if (!result || !result.transaction) {
+      console.log(`Transaction not found for address: ${txnAddress}`);
+      break;
+    }
+
+    txn = result.transaction;
+
+    console.log(`Current transaction address: ${txnAddress}`);
+    console.log(`Previous transaction address: ${txn.previousAddress}`);
+    console.log(`Transaction type: ${txn.type}`);
+
+    if (txn.type === "hosting") {
+      lastHostingTx = txn;
+      break;
+    }
+  }
+
+  return lastHostingTx;
 }
 
 async function logUpdateInfo(aeweb) {
