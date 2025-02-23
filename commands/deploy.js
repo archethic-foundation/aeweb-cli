@@ -332,7 +332,6 @@ async function fetchLastHostingTx(txnAddress, archethic) {
     txnAddress = uint8ArrayToHex(txnAddress);
   }
 
-  // Requête pour obtenir la dernière transaction
   const lastTxQuery = `
   query {
     lastTransaction(
@@ -362,7 +361,6 @@ async function fetchLastHostingTx(txnAddress, archethic) {
   while (txn.previousAddress) {
     txnAddress = txn.previousAddress;
 
-    // Requête pour obtenir une transaction spécifique
     const txQuery = `
     query {
       transaction(
