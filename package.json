@@ -1,6 +1,6 @@
 {
   "name": "@archethicjs/aeweb-cli",
-  "version": "0.7.5",
+  "version": "0.7.6",
   "type": "module",
   "description": "A cli to deploy websites on top of Archethic",
   "bin": {
