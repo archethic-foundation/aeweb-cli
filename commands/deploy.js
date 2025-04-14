@@ -11,7 +11,7 @@ import bip39 from "bip39";
 import { getSeeds } from "./cli.js";
 
 const { deriveAddress } = Crypto
-const { originPrivateKey, fromBigInt, uint8ArrayToHex } = Utils
+const { originPrivateKey, formatBigInt, uint8ArrayToHex } = Utils
 
 const command = 'deploy';
 
@@ -233,7 +233,7 @@ const handler = async function(argv) {
 
     const { fee, rates } = await archethic.transaction.getTransactionFee(transferTx)
 
-    const fees = fromBigInt(fee + refTxFees + filesTxFees)
+    const fees = new Number(formatBigInt(fee + refTxFees + filesTxFees))
 
     // Ask for fees validation
     const ok = await validFees(fees, rates, transactions.length)
